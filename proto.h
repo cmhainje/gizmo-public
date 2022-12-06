@@ -915,6 +915,14 @@ double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, 
 #endif
 
 
+#ifdef DM_DMB
+double cross_section(double velocity);
+double script_A(double w, double T_over_m);
+double script_B(double w, double T_over_m);
+void mom_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double rho_B, double T_B, double m_B, double out[3]);
+double heat_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double rho_B, double T_B, double m_B);
+#endif
+
 
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
 double do_cbe_nvt_inversion_for_faces(int i);
