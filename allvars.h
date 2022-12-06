@@ -1763,7 +1763,7 @@ extern struct global_data_all_processes
 
 #ifdef DM_DMB
     MyDouble DMB_InteractionCrossSection;
-    MyDouble DMB_InteractionPowerScale;
+    int DMB_InteractionPowerScale;
 #endif
 
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
