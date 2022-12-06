@@ -661,11 +661,9 @@ void radiation_pressure_winds_consolidated(void);
 int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_local);
 #endif
 
-#ifdef GALSF_SUBGRID_WINDS
-#if (GALSF_SUBGRID_WIND_SCALING==2)
+#if (defined(GALSF_SUBGRID_WINDS) && (GALSF_SUBGRID_WIND_SCALING==2)) || defined(DM_DMB)
 void disp_setup_smoothinglengths(void);
 void disp_density(void);
-#endif
 #endif
 
 

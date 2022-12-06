@@ -737,10 +737,8 @@ void init(void)
     if(RestartFlag != 3 && RestartFlag != 5) {ags_setup_smoothinglengths();}
 #endif
 
-#ifdef GALSF_SUBGRID_WINDS
-#if (GALSF_SUBGRID_WIND_SCALING==2)
+#if (defined(GALSF_SUBGRID_WINDS) && (GALSF_SUBGRID_WIND_SCALING==2)) || defined(DM_DMB)
     if(RestartFlag != 3 && RestartFlag != 5) {disp_setup_smoothinglengths();}
-#endif
 #endif
 
 #if defined GALSF_SFR_IMF_VARIATION
@@ -1181,8 +1179,7 @@ void ags_setup_smoothinglengths(void)
 #endif // AGS_HSML_CALCULATION_IS_ACTIVE
 
 
-#if defined(GALSF_SUBGRID_WINDS)
-#if (GALSF_SUBGRID_WIND_SCALING==2)
+#if (defined(GALSF_SUBGRID_WINDS) && (GALSF_SUBGRID_WIND_SCALING==2)) || defined(DM_DMB)
 void disp_setup_smoothinglengths(void)
 {
     int i, no, p;
@@ -1208,7 +1205,6 @@ void disp_setup_smoothinglengths(void)
     if(ThisTask == 0) {printf("computing DM Vel_disp around gas particles.\n");}
     disp_density();
 }
-#endif
 #endif
 
 

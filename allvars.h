@@ -2967,14 +2967,15 @@ extern struct gas_cell_data
 #if (GALSF_SUBGRID_WIND_SCALING==1)
   MyFloat HostHaloMass;             /*!< host halo mass estimator for wind launching velocity */
 #endif
-#if (GALSF_SUBGRID_WIND_SCALING==2)
+#endif
+
+#if (defined(GALSF_SUBGRID_WINDS) && (GALSF_SUBGRID_WIND_SCALING==2)) || defined(DM_DMB)
   MyFloat  HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
   MyDouble NumNgbDM;                /*!< number of neighbor dark matter particles */
   MyDouble DM_Vx;
   MyDouble DM_Vy;
   MyDouble DM_Vz;
   MyDouble DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */
-#endif
 #endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
