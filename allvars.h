@@ -1761,6 +1761,11 @@ extern struct global_data_all_processes
     MyDouble DM_InteractionVelocityScale; /*!< scale above which the scattering becomes velocity-dependent */
 #endif
 
+#ifdef DM_DMB
+    MyDouble DMB_InteractionCrossSection;
+    MyDouble DMB_InteractionPowerScale;
+#endif
+
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
   int MaxPartGas;		/*!< This gives the maxmimum number of gas cells that can be stored on one processor. */
   int ICFormat;			/*!< selects different versions of IC file-format */
@@ -2295,6 +2300,7 @@ extern ALIGN(32) struct particle_data
     MyDouble Vel[3];                /*!< particle velocity at its current time */
     MyDouble dp[3];
     MyFloat Particle_DivVel;        /*!< velocity divergence of neighbors (for predict step) */
+    // ^what is this? can we use it?
 
     MyDouble GravAccel[3];          /*!< particle acceleration due to gravity */
 #ifdef PMGRID

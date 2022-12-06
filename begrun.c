@@ -1124,6 +1124,17 @@ void read_parameter_file(char *fname)
 #endif
 
 
+#ifdef DM_DMB
+        strcpy(tag[nt], "DMB_InteractionCrossSection");
+        addr[nt] = &All.DMB_InteractionCrossSection;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "DMB_InteractionPowerScale");
+        addr[nt] = &All.DMB_InteractionPowerScale;
+        id[nt++] = REAL;
+#endif
+
+
         strcpy(tag[nt], "MinGasHsmlFractional");
         strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
         addr[nt] = &All.MinGasHsmlFractional;
