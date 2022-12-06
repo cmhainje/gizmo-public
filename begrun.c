@@ -1197,16 +1197,6 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#ifdef DM_DMB
-        strcpy(tag[nt], "DMB_InteractionCrossSection");
-        addr[nt] = &All.DMB_InteractionCrossSection;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt], "DMB_InteractionPowerScale");
-        addr[nt] = &All.DMB_InteractionPowerScale;
-        id[nt++] = INT;
-#endif
-
 
         strcpy(tag[nt], "MinGasHsmlFractional");
         strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
@@ -1582,6 +1572,18 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 #endif // GALSF_SUBGRID_WINDS
+
+
+#ifdef DM_DMB
+        strcpy(tag[nt], "DMB_InteractionCrossSection");
+        addr[nt] = &All.DMB_InteractionCrossSection;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "DMB_InteractionPowerScale");
+        addr[nt] = &All.DMB_InteractionPowerScale;
+        id[nt++] = INT;
+#endif
+
 
 #endif
 
