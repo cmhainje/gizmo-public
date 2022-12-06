@@ -102,6 +102,23 @@ FINCL =
 
 
 #----------------------------------------------------------------------------------------------
+
+ifeq ($(SYSTYPE),"Greene")
+CC        = mpicc
+CXX       = mpic++
+FC        = mpif90 -nofor_main
+OPTIMIZE  = -O1 -parallel -qopenmp
+GSL_INCL  = -I/share/apps/gsl/2.6/intel/include
+GSL_LIBS  = -L/share/apps/gsl/2.6/intel/lib
+FFTW_INCL = -I/share/apps/fftw/3.3.9/openmpi/intel/include
+FFTW_LIBS = -L/share/apps/fftw/3.3.9/openmpi/intel/lib
+HDF5INCL  = -I/share/apps/hdf5/1.12.0/openmpi/intel/include -DH5_USE_16_API
+HDF5LIB   = -L/share/apps/hdf5/1.12.0/openmpi/intel/lib -lhdf5 -lz
+MPICHLIB  =
+# modules to load:
+# module load intel/19.1.2 fftw/openmpi/intel/3.3.9 gsl/intel/2.6 hdf5/openmpi/intel/1.12.0
+endif
+
 ifeq ($(SYSTYPE),"Stampede")
 CC       =  mpicc
 CXX      =  mpic++
