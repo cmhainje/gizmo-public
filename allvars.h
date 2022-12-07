@@ -2820,6 +2820,14 @@ extern struct gas_cell_data
   MyDouble DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */
 #endif
 
+#ifdef DM_DMB
+  MyDouble DM_Density;    /*!< local dark matter density */
+  MyDouble DMB_MomExch_x; /*!< momentum exchange from B to DM */
+  MyDouble DMB_MomExch_y; /*!< momentum exchange from B to DM */
+  MyDouble DMB_MomExch_z; /*!< momentum exchange from B to DM */
+  MyDouble DMB_HeatExch;  /*!< heat exchange from B to DM */
+#endif
+
 #ifdef GALSF_FB_TURNOFF_COOLING
   MyFloat DelayTimeCoolingSNe;      /*!< flag indicating cooling is suppressed b/c heated by SNe */
 #endif
