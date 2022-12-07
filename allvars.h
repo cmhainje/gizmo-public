@@ -1763,6 +1763,7 @@ extern struct global_data_all_processes
 
 #ifdef DM_DMB
     MyDouble DMB_InteractionCrossSection;
+    MyDouble DMB_DarkMatterMass;
     int DMB_InteractionPowerScale;
 #endif
 

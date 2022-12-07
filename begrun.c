@@ -1503,6 +1503,10 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "DMB_InteractionPowerScale");
         addr[nt] = &All.DMB_InteractionPowerScale;
         id[nt++] = INT;
+
+        strcpy(tag[nt], "DMB_DarkMatterMass");
+        addr[nt] = &All.DMB_DarkMatterMass;
+        id[nt++] = INT;
 #endif
 
 
