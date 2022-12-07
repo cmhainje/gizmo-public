@@ -914,11 +914,7 @@ double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, 
 
 
 #ifdef DM_DMB
-double cross_section(double velocity);
-double script_A(double w, double T_over_m);
-double script_B(double w, double T_over_m);
-void mom_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double rho_B, double T_B, double m_B, double out[3]);
-double heat_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double rho_B, double T_B, double m_B);
+void compute_exch_rates(int i, double out[4]);
 #endif
 
 
