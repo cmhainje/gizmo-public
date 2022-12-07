@@ -19,9 +19,7 @@
 /*! Computes the value of the momentum-exchange cross section at a given velocity. */
 double cross_section(double velocity)
 {
-    double sigma = All.DMB_InteractionCrossSection;
-    int n = All.DMB_InteractionPowerScale;
-    return sigma * pow(velocity, n);
+    return All.DMB_InteractionCrossSection * pow(velocity, All.DMB_InteractionPowerScale);
 }
 
 /*! Implements the script A function (assuming a power-law cross section). */
@@ -78,6 +76,69 @@ double heat_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, dou
     double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
     return coeff * (B * (T_B - T_DM) + T_DM / m_DM * A * dV_mag * dV_mag);
 }
+
+
+/*! Computes the temperature of dark matter from its velocity dispersion.
+ *  (Assumes vel_disp is sigma^2, not just sigma.)
+ */
+double temperature_DM(double vel_disp)
+{
+    // TODO: make sure units are correct (they probably aren't)
+    return All.DMB_DarkMatterMass * vel_disp / 3;
+}
+
+/*! Computes exchange rates and stores them in `out`. (out = [Pdot_x, Pdot_y, Pdot_z, Qdot]) */
+void compute_exch_rates(int i, double out[4])
+{
+    /**
+     * `i` is the index of a gas cell
+     * this gas cell has attributes stored in P[i] (general) and SphP[i] (gas-specific)
+     * key attributes:
+     *  - P[i].Mass is a double containing the mass
+     *  - P[i].Vel is a double[3] containing the velocity
+     *  - SphP[i].VelPred is a double[3] containing the ''predicted'' gas cell
+     *        velocity at the current time
+     *        (we should modify this as well as P[i].Vel)
+     *  - SphP[i].DM_VelDisp is a double containing the local DM velocity dispersion
+     *  - SphP[i].DM_V{x,y,z} are doubles containing the local DM mean velocity
+     */
+
+    int k;
+
+    if (SphP[i].NumNgbDM == 0 || SphP[i].DM_Density <= 0) {
+        for (k = 0; k < 4; k++) { out[k] = 0.0; }
+        return;
+    }
+
+    // compute dV := V_DM - V_gas
+    double dV[3];
+    dV[0] = SphP[i].DM_Vx - P[i].Vel[0];
+    dV[1] = SphP[i].DM_Vy - P[i].Vel[1];
+    dV[2] = SphP[i].DM_Vz - P[i].Vel[2];
+
+    // compute densities
+    double rho_B = SphP[i].Density * All.cf_a3inv;
+    double rho_DM = SphP[i].DM_Density * All.cf_a3inv;
+
+    // compute temperatures (T_B computation follows galaxy_sf/sfr_eff.c:304-305)
+    double u_B = SphP[i].InternalEnergyPred;
+    double mu=1, ne=1, nh0=0, nHe0, nHepp, nhp, nHeII; // pull various known thermal properties, prepare to extract others //
+    double T_B = ThermalProperties(u_B, rho_B, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
+    double T_DM = temperature_DM(SphP[i].DM_VelDisp);
+
+    double m_B = mu * PROTONMASS_CGS; // TODO: gotta work out the units
+    double m_DM = All.DMB_DarkMatterMass;
+
+    // compute Pdot, Qdot
+    double Pdot[3], Qdot;
+    mom_exch_rate(dV, rho_DM, T_DM, m_DM, rho_B, T_B, m_B, Pdot);
+    Qdot = heat_exch_rate(dV, rho_DM, T_DM, m_DM, rho_B, T_B, m_B);
+
+    // fill output array
+    for (k = 0; k < 3; k++) { out[k] = Pdot[k]; }
+    out[3] = Qdot;
+}
+
 
 
 #endif
