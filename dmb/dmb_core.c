@@ -90,19 +90,6 @@ double temperature_DM(double vel_disp)
 /*! Computes exchange rates and stores them in `out`. (out = [Pdot_x, Pdot_y, Pdot_z, Qdot]) */
 void compute_exch_rates(int i, double out[4])
 {
-    /**
-     * `i` is the index of a gas cell
-     * this gas cell has attributes stored in P[i] (general) and SphP[i] (gas-specific)
-     * key attributes:
-     *  - P[i].Mass is a double containing the mass
-     *  - P[i].Vel is a double[3] containing the velocity
-     *  - SphP[i].VelPred is a double[3] containing the ''predicted'' gas cell
-     *        velocity at the current time
-     *        (we should modify this as well as P[i].Vel)
-     *  - SphP[i].DM_VelDisp is a double containing the local DM velocity dispersion
-     *  - SphP[i].DM_V{x,y,z} are doubles containing the local DM mean velocity
-     */
-
     int k;
 
     if (SphP[i].NumNgbDM == 0 || SphP[i].DM_Density <= 0) {
@@ -126,6 +113,7 @@ void compute_exch_rates(int i, double out[4])
     double T_B = ThermalProperties(u_B, rho_B, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
     double T_DM = temperature_DM(SphP[i].DM_VelDisp);
 
+    // compute 'microparticle' masses
     double m_B = mu * PROTONMASS_CGS; // TODO: gotta work out the units
     double m_DM = All.DMB_DarkMatterMass;
 
