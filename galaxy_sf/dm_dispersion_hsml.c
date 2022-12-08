@@ -268,6 +268,23 @@ void disp_density(void)
             SphP[i].DMB_MomExch_y = exch[1];
             SphP[i].DMB_MomExch_z = exch[2];
             SphP[i].DMB_HeatExch = exch[3];
+
+            // Apply kick to baryon particle
+            double volume = SphP[i].HsmlDM * SphP[i].HsmlDM * SphP[i].HsmlDM; /* is there a better estimate? */
+            double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
+
+            // All.cf_atime used in sfr_eff.c for kick; should use here?
+            double kick_coeff = dtime * volume * All.cf_atime;
+            SphP[i].VelPred[0] += SphP[i].DMB_MomExch_x * kick_coeff;
+            SphP[i].VelPred[1] += SphP[i].DMB_MomExch_y * kick_coeff;
+            SphP[i].VelPred[2] += SphP[i].DMB_MomExch_z * kick_coeff;
+            P[i].Vel[0] += SphP[i].DMB_MomExch_x * kick_coeff;
+            P[i].Vel[1] += SphP[i].DMB_MomExch_y * kick_coeff;
+            P[i].Vel[2] += SphP[i].DMB_MomExch_z * kick_coeff;
+
+            // do I need some All.cf_ variable here?
+            SphP[i].InternalEnergy += SphP[i].DMB_HeatExch * dtime * volume;
+            SphP[i].InternalEnergyPred += SphP[i].DMB_HeatExch * dtime * volume;
 #endif
 
         }
