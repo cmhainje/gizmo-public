@@ -737,8 +737,14 @@ void init(void)
     if(RestartFlag != 3 && RestartFlag != 5) {ags_setup_smoothinglengths();}
 #endif
 
-#if (defined(GALSF_SUBGRID_WINDS) && (GALSF_SUBGRID_WIND_SCALING==2)) || defined(DM_DMB)
+#ifdef GALSF_SUBGRID_WINDS
+#if (GALSF_SUBGRID_WIND_SCALING==2)
     if(RestartFlag != 3 && RestartFlag != 5) {disp_setup_smoothinglengths();}
+#endif
+#endif
+
+#ifdef DM_DMB
+    if (RestartFlag != 3 && RestartFlag != 5) { DMB_setup_smoothinglengths(); }
 #endif
 
 #if defined GALSF_SFR_IMF_VARIATION
@@ -1179,7 +1185,8 @@ void ags_setup_smoothinglengths(void)
 #endif // AGS_HSML_CALCULATION_IS_ACTIVE
 
 
-#if (defined(GALSF_SUBGRID_WINDS) && (GALSF_SUBGRID_WIND_SCALING==2)) || defined(DM_DMB)
+#if defined(GALSF_SUBGRID_WINDS)
+#if (GALSF_SUBGRID_WIND_SCALING==2)
 void disp_setup_smoothinglengths(void)
 {
     int i, no, p;
@@ -1203,6 +1210,36 @@ void disp_setup_smoothinglengths(void)
         }
     }
     if(ThisTask == 0) {printf("computing DM Vel_disp around gas particles.\n");}
+    disp_density();
+}
+#endif
+#endif
+
+#ifdef DM_DMB
+void dmb_setup_smoothinglengths(void)
+{
+    int i, no, p;
+    if(RestartFlag == 0 || RestartFlag == 2)
+    {
+        for(i = 0; i < NumPart; i++)
+        {
+            if(P[i].Type == 0)
+            {
+                no = Father[i];
+                while(10 * 2.0 * 64 * P[i].Mass > Nodes[no].u.d.mass)
+                {
+                    p = Nodes[no].u.d.father;
+                    if(p < 0) {break;}
+                    no = p;
+                }
+                P[i].DMB_Hsml = pow(1.0/NORM_COEFF * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                // TODO: this looks like it's gonna need modified
+                double soft = All.SofteningTable[P[i].Type];
+                if(soft != 0) {if((P[i].DMB_Hsml >1000.*soft)||(PPP[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].DMB_Hsml = soft;}}
+            }
+        }
+    }
+    if(ThisTask == 0) {printf("computing vel_disp around gas and DM particles.\n");}
     disp_density();
 }
 #endif
