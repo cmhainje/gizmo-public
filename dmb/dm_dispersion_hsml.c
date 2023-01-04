@@ -25,8 +25,7 @@
  *
  */
 
-#ifdef GALSF_SUBGRID_WINDS
-#if (GALSF_SUBGRID_WIND_SCALING==2)
+#ifdef DM_DMB
 
 #define CORE_FUNCTION_NAME disp_density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME disp_particle2in_density    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
@@ -59,6 +58,9 @@ static struct OUTPUT_STRUCT_NAME
     MyLongDouble DM_Vx;
     MyLongDouble DM_Vy;
     MyLongDouble DM_Vz;
+#ifdef DM_DMB
+    MyLongDouble DM_Density;
+#endif
 }
 *DATARESULT_NAME, *DATAOUT_NAME;
 
@@ -70,6 +72,9 @@ void disp_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, 
     ASSIGN_ADD(SphP[i].DM_Vz, out->DM_Vz, mode);
     ASSIGN_ADD(SphP[i].DM_VelDisp, out->DM_Vel_Disp, mode);
     ASSIGN_ADD(SphP[i].NumNgbDM, out->Ngb, mode);
+#ifdef DM_DMB
+    ASSIGN_ADD(SphP[i].DM_Density, out->DM_Density, mode);
+#endif
 }
 
 
@@ -102,6 +107,9 @@ int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnode
                 if(P[j].Mass <= 0) continue;
                 out.DM_Vx += P[j].Vel[0]; out.DM_Vy += P[j].Vel[1]; out.DM_Vz += P[j].Vel[2];
                 out.DM_Vel_Disp += (P[j].Vel[0] * P[j].Vel[0] + P[j].Vel[1] * P[j].Vel[1] + P[j].Vel[2] * P[j].Vel[2]);
+#ifdef DM_DMB
+                out.DM_Density += P[j].Mass;
+#endif
                 out.Ngb++;
             } // numngb_inbox loop
         } // while(startnode)
@@ -244,6 +252,41 @@ void disp_density(void)
             } else {
                 if((SphP[i].DM_VelDisp <= 0) || isnan(SphP[i].DM_VelDisp)) {SphP[i].DM_VelDisp = sqrt(P[i].Vel[0]*P[i].Vel[0]+P[i].Vel[1]*P[i].Vel[1]+P[i].Vel[2]*P[i].Vel[2])/All.cf_atime;}
             }
+
+#ifdef DM_DMB
+            if (SphP[i].NumNgbDM > 0) {
+                // divide by smoothing length^3
+                SphP[i].DM_Density /= SphP[i].HsmlDM * SphP[i].HsmlDM * SphP[i].HsmlDM;
+            } else {
+                SphP[i].DM_Density = 0;
+            }
+
+            double exch[4];
+            compute_exch_rates(i, exch);
+
+            SphP[i].DMB_MomExch_x = exch[0];
+            SphP[i].DMB_MomExch_y = exch[1];
+            SphP[i].DMB_MomExch_z = exch[2];
+            SphP[i].DMB_HeatExch = exch[3];
+
+            // Apply kick to baryon particle
+            double volume = SphP[i].HsmlDM * SphP[i].HsmlDM * SphP[i].HsmlDM; /* is there a better estimate? */
+            double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
+
+            // All.cf_atime used in sfr_eff.c for kick; should use here?
+            double kick_coeff = dtime * volume * All.cf_atime;
+            SphP[i].VelPred[0] += SphP[i].DMB_MomExch_x * kick_coeff;
+            SphP[i].VelPred[1] += SphP[i].DMB_MomExch_y * kick_coeff;
+            SphP[i].VelPred[2] += SphP[i].DMB_MomExch_z * kick_coeff;
+            P[i].Vel[0] += SphP[i].DMB_MomExch_x * kick_coeff;
+            P[i].Vel[1] += SphP[i].DMB_MomExch_y * kick_coeff;
+            P[i].Vel[2] += SphP[i].DMB_MomExch_z * kick_coeff;
+
+            // do I need some All.cf_ variable here?
+            SphP[i].InternalEnergy += SphP[i].DMB_HeatExch * dtime * volume;
+            SphP[i].InternalEnergyPred += SphP[i].DMB_HeatExch * dtime * volume;
+#endif
+
         }
     }
     
@@ -255,7 +298,6 @@ void disp_density(void)
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
 
-#endif
 #endif
 
 
