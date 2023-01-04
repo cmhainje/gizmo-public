@@ -2521,6 +2521,20 @@ extern ALIGN(32) struct particle_data
     long unsigned int NInteractions; /*!< Total number of interactions */
 #endif
 
+#ifdef DM_DMB
+    MyFloat  DMB_Hsml;      /*!< smoothing length to find neighboring particles */
+    MyDouble DMB_NumNgb;    /*!< number of neighbor particles */
+    MyDouble DMB_Vx;
+    MyDouble DMB_Vy;
+    MyDouble DMB_Vz;
+    MyDouble DMB_VelDisp;   /*!< surrounding velocity and velocity dispersion */
+    MyDouble DMB_Density;   /*!< local density */
+    MyDouble DMB_MomExch_x;
+    MyDouble DMB_MomExch_y;
+    MyDouble DMB_MomExch_z;
+    MyDouble DMB_HeatExch;  /*!< momentum and heat exchange rates */
+#endif
+
 #if defined(SUBFIND)
     int GrNr;
     int SubNr;
@@ -2808,9 +2822,7 @@ extern struct gas_cell_data
 #if (GALSF_SUBGRID_WIND_SCALING==1)
   MyFloat HostHaloMass;             /*!< host halo mass estimator for wind launching velocity */
 #endif
-#endif
-
-#if (defined(GALSF_SUBGRID_WINDS) && (GALSF_SUBGRID_WIND_SCALING==2)) || defined(DM_DMB)
+#if (GALSF_SUBGRID_WIND_SCALING==2)
   MyFloat  HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
   MyDouble NumNgbDM;                /*!< number of neighbor dark matter particles */
   MyDouble DM_Vx;
@@ -2818,13 +2830,6 @@ extern struct gas_cell_data
   MyDouble DM_Vz;
   MyDouble DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */
 #endif
-
-#ifdef DM_DMB
-  MyDouble DM_Density;    /*!< local dark matter density */
-  MyDouble DMB_MomExch_x; /*!< momentum exchange from B to DM */
-  MyDouble DMB_MomExch_y; /*!< momentum exchange from B to DM */
-  MyDouble DMB_MomExch_z; /*!< momentum exchange from B to DM */
-  MyDouble DMB_HeatExch;  /*!< heat exchange from B to DM */
 #endif
 
 #ifdef GALSF_FB_TURNOFF_COOLING
