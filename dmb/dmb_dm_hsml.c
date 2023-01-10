@@ -325,7 +325,8 @@ void disp_density(void)
                 }
 
                 // heat kick
-                double volume = P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml; /* is there a better estimate? */
+                // double volume = P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml; /* is there a better estimate? */
+                double volume = P[i].Mass / SphP[i].Density;
                 SphP[i].InternalEnergy += P[i].DMB_HeatExch * dtime * volume;
                 SphP[i].InternalEnergyPred += P[i].DMB_HeatExch * dtime * volume;
             }
