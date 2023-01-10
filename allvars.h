@@ -2668,17 +2668,22 @@ extern ALIGN(32) struct particle_data
 #endif
 
 #ifdef DM_DMB
-    MyFloat  DMB_Hsml;      /*!< smoothing length to find neighboring particles */
-    MyDouble DMB_NumNgb;    /*!< number of neighbor particles */
-    MyDouble DMB_Vx;
-    MyDouble DMB_Vy;
-    MyDouble DMB_Vz;
-    MyDouble DMB_VelDisp;   /*!< surrounding velocity and velocity dispersion */
-    MyDouble DMB_Density;   /*!< local density */
-    MyDouble DMB_MomExch_x;
-    MyDouble DMB_MomExch_y;
-    MyDouble DMB_MomExch_z;
-    MyDouble DMB_HeatExch;  /*!< momentum and heat exchange rates */
+    MyFloat  DMB_Hsml;    /*!< smoothing length to find neighboring particles */
+    MyDouble DMB_NumNgb;  /*! total number of neighbor DM and gas particles */
+
+    MyDouble DMB_NumNgbDM;   /*!< number of neighbor DM particles */
+    MyDouble DMB_VDM[3];     /*! mean velocity of local DM */
+    MyDouble DMB_VelDispDM;  /*!< surrounding velocity and velocity dispersion */
+    MyDouble DMB_DensityDM;  /*!< local density */
+
+    MyDouble DMB_NumNgbGas;             /*!< number of neighboring gas cells */
+    MyDouble DMB_VGas[3];               /*! mean velocity of local gas */
+    MyDouble DMB_DensityGas;            /*!< local gas density */
+    MyDouble DMB_TemperatureGas;        /*!< mean temperature of local gas */
+    MyDouble DMB_MicroparticleMassGas;  /*!< mean microparticle mass of local gas */
+
+    MyDouble DMB_MomExch[3];  /*!< momentum exchange rate */
+    MyDouble DMB_HeatExch;    /*!< heat exchange rate */
 #endif
 
 #if defined(SUBFIND)

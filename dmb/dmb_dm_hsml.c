@@ -8,20 +8,20 @@
 #include "../proto.h"
 #include "../kernel.h"
 
-/*! \file dm_dispersion_hsml
- *  \brief smoothing length and velocity dispersion calculation for dark matter particles around gas particles
+/*! \file dmb_dm_hsml
+ *  \brief smoothing length and velocity dispersion calculation for dark matter particles around gas and dark matter particles
  *
  *  This file contains a loop modeled on the gas density computation which
- *    determines kernel lengths for dark matter particles around a given set of gas particles;
- *    this is used by the flag GALSF_SUBGRID_WIND_SCALING==2 to estimate the local dark
- *    matter velocity dispersion around a given gas particle, which (in turn) is used to set the
- *    sub-grid wind velocity and mass loading. The loop here needs to be called for these models (note this
+ *    determines kernel lengths for dark matter particles around a given set of gas and dark matter particles;
+ *    this is used by the flag DM_DMB to estimate the local dark matter velocity dispersion around a given gas 
+ *    or dark matter particle, which (in turn) is used to compute the momentum and heat exchange rates between
+ *    dark matter and baryons due to scattering. The loop here needs to be called for these models (note this
  *    in general will require a different smoothing length from, say, the dm-dm force softening, or the
  *    gas kernel length for hydro, hence it requires a whole additional loop, even though the loop is
  *    functionally identical - modulo which particles are used - to the loop for adaptive gravitational softening
  *
- * This file was written by Qirong Zhu, for GIZMO, based on Phil Hopkins's adaptive gravitational softening
- *    routine. It has been modified by Phil on re-merger into the main branch of GIZMO with various optimizations
+ * This file was originally written by Qirong Zhu, for GIZMO, based on Phil Hopkins's adaptive gravitational softening
+ *    routine. It has been here copied and modified by Connor Hainje.
  *
  */
 
@@ -37,7 +37,7 @@
 static struct INPUT_STRUCT_NAME
 {
     MyDouble Pos[3];
-    MyFloat HsmlDM;
+    MyFloat Hsml;
     int NodeList[NODELISTLENGTH];
 }
 *DATAIN_NAME, *DATAGET_NAME;
@@ -46,35 +46,49 @@ static struct INPUT_STRUCT_NAME
 void disp_particle2in_density(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
-    in->HsmlDM = SphP[i].HsmlDM;
+    in->Hsml = P[i].DMB_Hsml;
 }
 
 
 /* this structure defines the variables that need to be sent -back to- the 'searching' element */
 static struct OUTPUT_STRUCT_NAME
 {
-    MyLongDouble Ngb;
-    MyLongDouble DM_Vel_Disp;
+    MyLongDouble DM_Ngb;
     MyLongDouble DM_Vx;
     MyLongDouble DM_Vy;
     MyLongDouble DM_Vz;
-#ifdef DM_DMB
+    MyLongDouble DM_VelDisp;
     MyLongDouble DM_Density;
-#endif
+
+    MyLongDouble Gas_Ngb;
+    MyLongDouble Gas_Vx;
+    MyLongDouble Gas_Vy;
+    MyLongDouble Gas_Vz;
+    MyLongDouble Gas_Density;
+    MyLongDouble Gas_Temperature;
+    MyLongDouble Gas_MicroMass;
 }
 *DATARESULT_NAME, *DATAOUT_NAME;
 
 /* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 void disp_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    ASSIGN_ADD(SphP[i].DM_Vx, out->DM_Vx, mode);
-    ASSIGN_ADD(SphP[i].DM_Vy, out->DM_Vy, mode);
-    ASSIGN_ADD(SphP[i].DM_Vz, out->DM_Vz, mode);
-    ASSIGN_ADD(SphP[i].DM_VelDisp, out->DM_Vel_Disp, mode);
-    ASSIGN_ADD(SphP[i].NumNgbDM, out->Ngb, mode);
-#ifdef DM_DMB
-    ASSIGN_ADD(SphP[i].DM_Density, out->DM_Density, mode);
-#endif
+    ASSIGN_ADD(P[i].DMB_NumNgb, out->DM_Ngb + out->Gas_Ngb, mode);
+
+    ASSIGN_ADD(P[i].DMB_NumNgbDM, out->DM_Ngb, mode);
+    ASSIGN_ADD(P[i].DMB_VDM[0], out->DM_Vx, mode);
+    ASSIGN_ADD(P[i].DMB_VDM[1], out->DM_Vy, mode);
+    ASSIGN_ADD(P[i].DMB_VDM[2], out->DM_Vz, mode);
+    ASSIGN_ADD(P[i].DMB_VelDispDM, out->DM_VelDisp, mode);
+    ASSIGN_ADD(P[i].DMB_DensityDM, out->DM_Density, mode);
+
+    ASSIGN_ADD(P[i].DMB_NumNgbGas, out->Gas_Ngb, mode);
+    ASSIGN_ADD(P[i].DMB_VGas[0], out->Gas_Vx, mode);
+    ASSIGN_ADD(P[i].DMB_VGas[1], out->Gas_Vy, mode);
+    ASSIGN_ADD(P[i].DMB_VGas[2], out->Gas_Vz, mode);
+    ASSIGN_ADD(P[i].DMB_DensityGas, out->Gas_Density, mode);
+    ASSIGN_ADD(P[i].DMB_TemperatureGas, out->Gas_Temperature, mode);
+    ASSIGN_ADD(P[i].DMB_MicroparticleMassGas, out->Gas_MicroMass, mode);
 }
 
 
@@ -83,7 +97,7 @@ int disp_density_isactive(int i);
 int disp_density_isactive(int i)
 {
     if(P[i].TimeBin < 0) return 0;
-    if(P[i].Type > 0) return 0; // only gas particles //
+    if(P[i].Type > 1) return 0; // only gas and DM particles //
     if(P[i].Mass <= 0) return 0;
     return 1;
 }
@@ -99,18 +113,39 @@ int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnode
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
         while(startnode >= 0) {
-            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.HsmlDM, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 2); // search for high-res DM particles only: 2^1 = 2
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 3); // search for high-res DM and gas particles: 2^0 + 2^1 = 3
             if(numngb_inbox < 0) {return -2;}
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Mass <= 0) continue;
-                out.DM_Vx += P[j].Vel[0]; out.DM_Vy += P[j].Vel[1]; out.DM_Vz += P[j].Vel[2];
-                out.DM_Vel_Disp += (P[j].Vel[0] * P[j].Vel[0] + P[j].Vel[1] * P[j].Vel[1] + P[j].Vel[2] * P[j].Vel[2]);
-#ifdef DM_DMB
-                out.DM_Density += P[j].Mass;
-#endif
-                out.Ngb++;
+
+                // Gas
+                if (P[j].Type == 0) {
+                    out.Gas_Vx += P[j].Vel[0];
+                    out.Gas_Vy += P[j].Vel[1];
+                    out.Gas_Vz += P[j].Vel[2];
+                    out.Gas_Density += P[j].Mass;
+
+                    double rho_B = SphP[j].Density * All.cf_a3inv;
+                    double u_B = SphP[j].InternalEnergyPred;
+                    double mu=1, ne=1, nh0=0, nHe0, nHepp, nhp, nHeII; // pull various known thermal properties, prepare to extract others //
+                    double T_B = ThermalProperties(u_B, rho_B, j, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
+                    out.Gas_Temperature += T_B;
+                    out.Gas_MicroMass += mu;
+
+                    out.Gas_Ngb++;
+                }
+
+                // Dark matter
+                else if (P[j].Type == 1) {
+                    out.DM_Vx += P[j].Vel[0];
+                    out.DM_Vy += P[j].Vel[1];
+                    out.DM_Vz += P[j].Vel[2];
+                    out.DM_VelDisp += (P[j].Vel[0] * P[j].Vel[0] + P[j].Vel[1] * P[j].Vel[1] + P[j].Vel[2] * P[j].Vel[2]);
+                    out.DM_Density += P[j].Mass;
+                    out.DM_Ngb++;
+                }
             } // numngb_inbox loop
         } // while(startnode)
         if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */
@@ -129,7 +164,7 @@ void disp_density(void)
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
     /* initialize anything we need to about the active particles before their loop */
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {if(disp_density_isactive(i)) {SphP[i].NumNgbDM = 0; Left[i] = Right[i] = 0;}}
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {if(disp_density_isactive(i)) {P[i].DMB_NumNgb = 0; Left[i] = Right[i] = 0;}}
     
     /* allocate buffers to arrange communication */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
@@ -146,14 +181,14 @@ void disp_density(void)
             {
                 redo_particle = 0; /* now check whether we have enough neighbours, and are below the maximum search radius */
                 double maxsoft = DMIN(All.MaxHsml, 10.0*PPP[i].Hsml);
-                if(((SphP[i].NumNgbDM < desnumngb - desnumngbdev) || (SphP[i].NumNgbDM > (desnumngb + desnumngbdev)))
+                if(((P[i].DMB_NumNgb < desnumngb - desnumngbdev) || (P[i].DMB_NumNgb > (desnumngb + desnumngbdev)))
                    && (Right[i]-Left[i] > 0.001*Left[i] || Left[i]==0 || Right[i]==0))
                 {
                     redo_particle = 1;
                 }
-                if(SphP[i].HsmlDM >= maxsoft)
+                if(P[i].DMB_Hsml >= maxsoft)
                 {
-                    SphP[i].HsmlDM = maxsoft;
+                    P[i].DMB_Hsml = maxsoft;
                     redo_particle = 0;
                 }
 
@@ -162,52 +197,52 @@ void disp_density(void)
                     /* need to redo this particle */
                     npleft++;
                     
-                    if(SphP[i].NumNgbDM < desnumngb-desnumngbdev) {Left[i]=DMAX(SphP[i].HsmlDM, Left[i]);}
-                    if(SphP[i].NumNgbDM > desnumngb+desnumngbdev) {if(Right[i]>0) {Right[i]=DMIN(Right[i],SphP[i].HsmlDM);} else {Right[i]=SphP[i].HsmlDM;}}
+                    if(P[i].DMB_NumNgb < desnumngb-desnumngbdev) {Left[i]=DMAX(P[i].DMB_Hsml, Left[i]);}
+                    if(P[i].DMB_NumNgb > desnumngb+desnumngbdev) {if(Right[i]>0) {Right[i]=DMIN(Right[i],P[i].DMB_Hsml);} else {Right[i]=P[i].DMB_Hsml;}}
                     
                     if(iter >= MAXITER - 10)
                     {
                         PRINT_WARNING("DM disp: i=%d task=%d ID=%llu Type=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-                         i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, SphP[i].HsmlDM, Left[i], Right[i], (float) SphP[i].NumNgbDM, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                         i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, P[i].DMB_Hsml, Left[i], Right[i], (float) P[i].DMB_NumNgb, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                     }
                     
                     // right/left define upper/lower bounds from previous iterations
                     if(Right[i] > 0 && Left[i] > 0)
                     {
                         // geometric interpolation between right/left //
-                        if(SphP[i].NumNgbDM > 1)
+                        if(P[i].DMB_NumNgb > 1)
                         {
-                            SphP[i].HsmlDM *= pow( desnumngb / SphP[i].NumNgbDM , 1./NUMDIMS );
+                            P[i].DMB_Hsml *= pow( desnumngb / P[i].DMB_NumNgb , 1./NUMDIMS );
                         } else {
-                            SphP[i].HsmlDM *= 2.0;
+                            P[i].DMB_Hsml *= 2.0;
                         }
-                        if((SphP[i].HsmlDM<Right[i])&&(SphP[i].HsmlDM>Left[i]))
+                        if((P[i].DMB_Hsml<Right[i])&&(P[i].DMB_Hsml>Left[i]))
                         {
-                            SphP[i].HsmlDM = pow(SphP[i].HsmlDM*SphP[i].HsmlDM*SphP[i].HsmlDM*SphP[i].HsmlDM * Left[i]*Right[i] , 1./6.);
+                            P[i].DMB_Hsml = pow(P[i].DMB_Hsml*P[i].DMB_Hsml*P[i].DMB_Hsml*P[i].DMB_Hsml * Left[i]*Right[i] , 1./6.);
                         } else {
-                            if(SphP[i].HsmlDM>Right[i]) SphP[i].HsmlDM=Right[i];
-                            if(SphP[i].HsmlDM<Left[i]) SphP[i].HsmlDM=Left[i];
-                            SphP[i].HsmlDM = pow(SphP[i].HsmlDM * Left[i] * Right[i] , 1.0/3.0);
+                            if(P[i].DMB_Hsml>Right[i]) P[i].DMB_Hsml=Right[i];
+                            if(P[i].DMB_Hsml<Left[i]) P[i].DMB_Hsml=Left[i];
+                            P[i].DMB_Hsml = pow(P[i].DMB_Hsml * Left[i] * Right[i] , 1.0/3.0);
                         }
                     }
                     else
                     {
                         if(Right[i] == 0 && Left[i] == 0)
                         {
-                            char buf[1000]; sprintf(buf, "DM disp: Right[i] == 0 && Left[i] == 0 && SphP[i].HsmlDM=%g\n", SphP[i].HsmlDM); terminate(buf);
+                            char buf[1000]; sprintf(buf, "DM disp: Right[i] == 0 && Left[i] == 0 && P[i].DMB_Hsml=%g\n", P[i].DMB_Hsml); terminate(buf);
                         }
                         double fac;
                         if(Right[i] == 0 && Left[i] > 0)
                         {
-                            if(SphP[i].NumNgbDM > 1) {fac = log( desnumngb / SphP[i].NumNgbDM ) / NUMDIMS;} else {fac=1.4;}
-                            if((SphP[i].NumNgbDM < 2*desnumngb)&&(SphP[i].NumNgbDM > 0.1*desnumngb)) {SphP[i].HsmlDM *= exp(fac);} else {SphP[i].HsmlDM *= 1.26;}
+                            if(P[i].DMB_NumNgb > 1) {fac = log( desnumngb / P[i].DMB_NumNgb ) / NUMDIMS;} else {fac=1.4;}
+                            if((P[i].DMB_NumNgb < 2*desnumngb)&&(P[i].DMB_NumNgb > 0.1*desnumngb)) {P[i].DMB_Hsml *= exp(fac);} else {P[i].DMB_Hsml *= 1.26;}
                         }
                         
                         if(Right[i] > 0 && Left[i] == 0)
                         {
-                            if(SphP[i].NumNgbDM > 1) {fac = log( desnumngb / SphP[i].NumNgbDM ) / NUMDIMS;} else {fac=1.4;}
+                            if(P[i].DMB_NumNgb > 1) {fac = log( desnumngb / P[i].DMB_NumNgb ) / NUMDIMS;} else {fac=1.4;}
                             fac = DMAX(fac,-1.535);
-                            if((SphP[i].NumNgbDM < 2*desnumngb)&&(SphP[i].NumNgbDM > 0.1*desnumngb)) {SphP[i].HsmlDM *= exp(fac);} else {SphP[i].HsmlDM /= 1.26;}
+                            if((P[i].DMB_NumNgb < 2*desnumngb)&&(P[i].DMB_NumNgb > 0.1*desnumngb)) {P[i].DMB_Hsml *= exp(fac);} else {P[i].DMB_Hsml /= 1.26;}
                         }
                     }
                 }
@@ -240,53 +275,67 @@ void disp_density(void)
     /* now that we are DONE iterating to find hsml, we can do the REAL final operations on the results */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+        int k;
         if(disp_density_isactive(i))
         {
-            if(SphP[i].NumNgbDM > 0)
-            {
-                SphP[i].DM_Vx /= SphP[i].NumNgbDM;
-                SphP[i].DM_Vy /= SphP[i].NumNgbDM;
-                SphP[i].DM_Vz /= SphP[i].NumNgbDM;
-                SphP[i].DM_VelDisp /= SphP[i].NumNgbDM;
-                SphP[i].DM_VelDisp = (1./All.cf_atime) * sqrt(SphP[i].DM_VelDisp - SphP[i].DM_Vx * SphP[i].DM_Vx - SphP[i].DM_Vy * SphP[i].DM_Vy - SphP[i].DM_Vz * SphP[i].DM_Vz) / 1.732;//	   1d velocity dispersion
+            // Gas
+            if (P[i].DMB_NumNgbGas > 0) {
+                for (k = 0; k < 3; k++) { P[i].DMB_VGas[k] /= P[i].DMB_NumNgbGas; }
+                P[i].DMB_TemperatureGas /= P[i].DMB_NumNgbGas;
+                P[i].DMB_MicroparticleMassGas /= P[i].DMB_NumNgbGas;
+                P[i].DMB_DensityGas /= P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml;
             } else {
-                if((SphP[i].DM_VelDisp <= 0) || isnan(SphP[i].DM_VelDisp)) {SphP[i].DM_VelDisp = sqrt(P[i].Vel[0]*P[i].Vel[0]+P[i].Vel[1]*P[i].Vel[1]+P[i].Vel[2]*P[i].Vel[2])/All.cf_atime;}
+                if (P[i].DMB_TemperatureGas < 0 || isnan(P[i].DMB_TemperatureGas)) {
+                    P[i].DMB_TemperatureGas = 0;
+                }
+                if (P[i].DMB_MicroparticleMassGas < 0 || isnan(P[i].DMB_MicroparticleMassGas)) {
+                    P[i].DMB_MicroparticleMassGas = 0;
+                }
+                if (P[i].DMB_DensityGas < 0 || isnan(P[i].DMB_DensityDM)) {
+                    P[i].DMB_DensityGas = 0;
+                }
             }
 
-#ifdef DM_DMB
-            if (SphP[i].NumNgbDM > 0) {
-                // divide by smoothing length^3
-                SphP[i].DM_Density /= SphP[i].HsmlDM * SphP[i].HsmlDM * SphP[i].HsmlDM;
+            // Dark matter
+            if (P[i].DMB_NumNgbDM > 0) {
+                for (k = 0; k < 3; k++) { P[i].DMB_VDM[k] /= P[i].DMB_NumNgbDM; }
+                P[i].DMB_VelDispDM /= P[i].DMB_NumNgbDM;
+                P[i].DMB_VelDispDM = (1./All.cf_atime) * sqrt(P[i].DMB_VelDispDM - P[i].DMB_VDM[0] * P[i].DMB_VDM[0] - P[i].DMB_VDM[1] * P[i].DMB_VDM[1] - P[i].DMB_VDM[2] * P[i].DMB_VDM[2]) / 1.732;  // 1d velocity dispersion
+                P[i].DMB_DensityDM /= P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml;
             } else {
-                SphP[i].DM_Density = 0;
+                if (P[i].DMB_VelDispDM < 0 || isnan(P[i].DMB_VelDispDM)) {
+                    P[i].DMB_VelDispDM = sqrt(P[i].Vel[0]*P[i].Vel[0]+P[i].Vel[1]*P[i].Vel[1]+P[i].Vel[2]*P[i].Vel[2])/All.cf_atime;
+                }
+                if (P[i].DMB_DensityDM < 0 || isnan(P[i].DMB_DensityDM)) {
+                    P[i].DMB_DensityDM = 0;
+                }
             }
 
-            double exch[4];
-            compute_exch_rates(i, exch);
+            compute_exch_rates(i, P[i].DMB_MomExch, &P[i].DMB_HeatExch);
 
-            SphP[i].DMB_MomExch_x = exch[0];
-            SphP[i].DMB_MomExch_y = exch[1];
-            SphP[i].DMB_MomExch_z = exch[2];
-            SphP[i].DMB_HeatExch = exch[3];
-
-            // Apply kick to baryon particle
-            double volume = SphP[i].HsmlDM * SphP[i].HsmlDM * SphP[i].HsmlDM; /* is there a better estimate? */
             double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
 
-            // All.cf_atime used in sfr_eff.c for kick; should use here?
-            double kick_coeff = dtime * volume * All.cf_atime;
-            SphP[i].VelPred[0] += SphP[i].DMB_MomExch_x * kick_coeff;
-            SphP[i].VelPred[1] += SphP[i].DMB_MomExch_y * kick_coeff;
-            SphP[i].VelPred[2] += SphP[i].DMB_MomExch_z * kick_coeff;
-            P[i].Vel[0] += SphP[i].DMB_MomExch_x * kick_coeff;
-            P[i].Vel[1] += SphP[i].DMB_MomExch_y * kick_coeff;
-            P[i].Vel[2] += SphP[i].DMB_MomExch_z * kick_coeff;
+            // current particle is gas
+            if (P[i].Type == 0) {
+                // momentum kick
+                double kick_coeff = dtime / P[i].DMB_DensityGas * All.cf_atime;
+                for (k = 0; k < 3; k++) {
+                    SphP[i].VelPred[k] += P[i].DMB_MomExch[k] * kick_coeff;
+                    P[i].Vel[k] += P[i].DMB_MomExch[k] * kick_coeff;
+                }
 
-            // do I need some All.cf_ variable here?
-            SphP[i].InternalEnergy += SphP[i].DMB_HeatExch * dtime * volume;
-            SphP[i].InternalEnergyPred += SphP[i].DMB_HeatExch * dtime * volume;
-#endif
+                // heat kick
+                double volume = P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml; /* is there a better estimate? */
+                SphP[i].InternalEnergy += P[i].DMB_HeatExch * dtime * volume;
+                SphP[i].InternalEnergyPred += P[i].DMB_HeatExch * dtime * volume;
+            }
 
+            // current particle is DM
+            else if (P[i].Type == 1) {
+                // momentum kick only
+                double kick_coeff = dtime / P[i].DMB_DensityDM * All.cf_atime;
+                for (k = 0; k < 3; k++) { P[i].Vel[k] += P[i].DMB_MomExch[k] * kick_coeff; }
+            }
         }
     }
     

@@ -46,7 +46,7 @@ double script_B(double w, double T_over_m)
     return 3.0 * c * pow(sigma, 0.5 * (n + 3.0)) * beta;
 }
 
-/*! Computes the momentum exchange rate per unit volume (which is filled into `out`).
+/*! Computes the momentum exchange rate (B -> DM) per unit volume (which is filled into `out`).
  *  dV is the dark matter velocity minus the baryon velocity (in that order)
  *  rho_DM, T_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
  *  rho_B, T_B, m_B are the same for baryonic matter
@@ -62,7 +62,7 @@ void mom_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double
     for (i = 0; i < 3; i++) { out[i] = coeff * dV[i]; }
 }
 
-/*! Computes the heat exchange rate per unit volume.
+/*! Computes the heat exchange rate (B -> DM) per unit volume.
  *  dV is the dark matter velocity minus the baryon velocity (in that order)
  *  rho_DM, T_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
  *  rho_B, T_B, m_B are the same for baryonic matter
@@ -87,31 +87,29 @@ double temperature_DM(double vel_disp)
     return All.DMB_DarkMatterMass * vel_disp / 3;
 }
 
-/*! Computes exchange rates and stores them in `out`. (out = [Pdot_x, Pdot_y, Pdot_z, Qdot]) */
-void compute_exch_rates(int i, double out[4])
-{
+/*! Computes exchange rates for a gas particle (DM -> B) and stores them in `out`. */
+void compute_exch_rates_gas(int i, double pdot[3], double* qdot) {
     int k;
 
-    if (SphP[i].NumNgbDM == 0 || SphP[i].DM_Density <= 0) {
-        for (k = 0; k < 4; k++) { out[k] = 0.0; }
+    if (P[i].DMB_NumNgbDM == 0 || P[i].DMB_DensityDM <= 0) {
+        for (k = 0; k < 3; k++) { pdot[k] = 0.0; }
+        *qdot = 0.;
         return;
     }
 
     // compute dV := V_DM - V_gas
     double dV[3];
-    dV[0] = SphP[i].DM_Vx - P[i].Vel[0];
-    dV[1] = SphP[i].DM_Vy - P[i].Vel[1];
-    dV[2] = SphP[i].DM_Vz - P[i].Vel[2];
+    for (k = 0; k < 3; k++) { dV[k] = P[i].DMB_VDM[k] - P[i].Vel[k]; }
 
     // compute densities
     double rho_B = SphP[i].Density * All.cf_a3inv;
-    double rho_DM = SphP[i].DM_Density * All.cf_a3inv;
+    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv;
 
-    // compute temperatures (T_B computation follows galaxy_sf/sfr_eff.c:304-305)
+    // compute temperatures
     double u_B = SphP[i].InternalEnergyPred;
     double mu=1, ne=1, nh0=0, nHe0, nHepp, nhp, nHeII; // pull various known thermal properties, prepare to extract others //
     double T_B = ThermalProperties(u_B, rho_B, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-    double T_DM = temperature_DM(SphP[i].DM_VelDisp);
+    double T_DM = temperature_DM(P[i].DMB_VelDispDM);
 
     // compute 'microparticle' masses
     double m_B = mu * PROTONMASS_CGS; // TODO: gotta work out the units
@@ -123,10 +121,50 @@ void compute_exch_rates(int i, double out[4])
     Qdot = heat_exch_rate(dV, rho_DM, T_DM, m_DM, rho_B, T_B, m_B);
 
     // fill output array
-    for (k = 0; k < 3; k++) { out[k] = Pdot[k]; }
-    out[3] = Qdot;
+    for (k = 0; k < 3; k++) { pdot[k] = -1 * Pdot[k]; }
+    *qdot = -1 * Qdot;
 }
 
+void compute_exch_rates_DM(int i, double pdot[3], double* qdot) {
+    int k;
 
+    if (P[i].DMB_NumNgbGas == 0 || P[i].DMB_DensityGas <= 0) {
+        for (k = 0; k < 3; k++) { pdot[k] = 0.0; }
+        *qdot = 0.;
+        return;
+    }
+
+    // compute dV := V_DM - V_gas
+    double dV[3];
+    for (k = 0; k < 3; k++) { dV[k] = P[i].Vel[k] - P[i].DMB_VGas[k]; }
+
+    // compute densities
+    double rho_B = P[i].DMB_DensityGas * All.cf_a3inv;
+    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv;
+
+    // compute temperatures
+    double T_B = P[i].DMB_TemperatureGas;
+    double T_DM = temperature_DM(P[i].DMB_VelDispDM);
+
+    // compute 'microparticle' masses
+    double m_B = P[i].DMB_MicroparticleMassGas * PROTONMASS_CGS; // TODO: gotta work out the units
+    double m_DM = All.DMB_DarkMatterMass;
+
+    // compute Pdot, Qdot
+    double Pdot[3], Qdot;
+    mom_exch_rate(dV, rho_DM, T_DM, m_DM, rho_B, T_B, m_B, Pdot);
+    Qdot = heat_exch_rate(dV, rho_DM, T_DM, m_DM, rho_B, T_B, m_B);
+
+    // fill output
+    for (k = 0; k < 3; k++) { pdot[k] = Pdot[k]; }
+    *qdot = Qdot;
+}
+
+/*! Computes exchange rates and stores them in `out`. (out = [Pdot_x, Pdot_y, Pdot_z, Qdot]) */
+void compute_exch_rates(int i, double pdot[3], double* qdot)
+{
+    if (P[i].Type == 0) { compute_exch_rates_gas(i, pdot, qdot); }
+    else if (P[i].Type == 1) { compute_exch_rates_DM(i, pdot, qdot); }
+}
 
 #endif
