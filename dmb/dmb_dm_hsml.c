@@ -312,30 +312,14 @@ void disp_density(void)
             }
 
             compute_exch_rates(i, P[i].DMB_MomExch, &P[i].DMB_HeatExch);
+            double v_kick[3], q_kick; compute_kicks(i, v_kick, &q_kick);
 
-            double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
+            for (k = 0; k < 3; k++) { P[i].Vel[k] += v_kick[k]; }
 
-            // current particle is gas
             if (P[i].Type == 0) {
-                // momentum kick
-                double kick_coeff = dtime / P[i].DMB_DensityGas * All.cf_atime;
-                for (k = 0; k < 3; k++) {
-                    SphP[i].VelPred[k] += P[i].DMB_MomExch[k] * kick_coeff;
-                    P[i].Vel[k] += P[i].DMB_MomExch[k] * kick_coeff;
-                }
-
-                // heat kick
-                // double volume = P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml; /* is there a better estimate? */
-                double volume = P[i].Mass / SphP[i].Density;
-                SphP[i].InternalEnergy += P[i].DMB_HeatExch * dtime * volume;
-                SphP[i].InternalEnergyPred += P[i].DMB_HeatExch * dtime * volume;
-            }
-
-            // current particle is DM
-            else if (P[i].Type == 1) {
-                // momentum kick only
-                double kick_coeff = dtime / P[i].DMB_DensityDM * All.cf_atime;
-                for (k = 0; k < 3; k++) { P[i].Vel[k] += P[i].DMB_MomExch[k] * kick_coeff; }
+                for (k = 0; k < 3; k++) { SphP[i].VelPred[k] += v_kick[k]; }
+                SphP[i].InternalEnergy += q_kick;
+                SphP[i].InternalEnergyPred += q_kick;
             }
         }
     }
