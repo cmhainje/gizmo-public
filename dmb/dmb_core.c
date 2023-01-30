@@ -16,13 +16,21 @@
 
 #ifdef DM_DMB
 
-/*! Computes the value of the momentum-exchange cross section at a given velocity. */
+/*! Computes the value of the momentum-exchange cross section at a given velocity.
+ *  Units:
+ *    velocity: physical, cgs (cm/s)
+ *    return: physical, cgs (cm^2)
+ */
 double cross_section(double velocity)
 {
-    return All.DMB_InteractionCrossSection * pow(velocity, All.DMB_InteractionPowerScale);
+    return All.DMB_InteractionCrossSection * All.DMB_DarkMatterMass * pow(velocity, All.DMB_InteractionPowerScale);
 }
 
-/*! Implements the script A function (assuming a power-law cross section). */
+/*! Implements the script A function (assuming a power-law cross section).
+ *  Units:
+ *    w: velocity, physical, CGS (cm/s)
+ *    T_over_m: temp/mass, physical, CGS (K/g)
+ */
 double script_A(double w, double T_over_m)
 {
     int n = All.DMB_InteractionPowerScale;
@@ -34,7 +42,11 @@ double script_A(double w, double T_over_m)
     return c * pow(sigma, 0.5 * (n + 1.0)) * alpha;
 }
 
-/*! Implements the script B function (assuming a power-law cross section). */
+/*! Implements the script B function (assuming a power-law cross section).
+ *  Units:
+ *    w: velocity, physical, CGS (cm/s)
+ *    T_over_m: temp/mass, physical, CGS (K/g)
+ */
 double script_B(double w, double T_over_m)
 {
     int n = All.DMB_InteractionPowerScale;
@@ -50,6 +62,12 @@ double script_B(double w, double T_over_m)
  *  dV is the dark matter velocity minus the baryon velocity (in that order)
  *  rho_DM, T_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
  *  rho_B, T_B, m_B are the same for baryonic matter
+ * 
+ *  Units:
+ *    dV: velocity, physical, cgs (cm/s)
+ *    rho_*: density, physical, cgs
+ *    m_*: grams (physical)
+ *    T_*: Kelvin
  */
 void mom_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double rho_B, double T_B, double m_B, double out[3])
 {
@@ -66,6 +84,12 @@ void mom_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double
  *  dV is the dark matter velocity minus the baryon velocity (in that order)
  *  rho_DM, T_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
  *  rho_B, T_B, m_B are the same for baryonic matter
+ * 
+ *  Units:
+ *    dV: velocity, physical, cgs (cm/s)
+ *    rho_*: density, physical, cgs
+ *    m_*: grams (physical)
+ *    T_*: Kelvin
  */
 double heat_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double rho_B, double T_B, double m_B)
 {
@@ -79,12 +103,12 @@ double heat_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, dou
 
 
 /*! Computes the temperature of dark matter from its velocity dispersion.
- *  (Assumes vel_disp is sigma^2, not just sigma.)
+ *  Assumes vel_disp is sigma^2 and is given in physical CGS units.
+ *  Returns temperature in Kelvin.
  */
 double temperature_DM(double vel_disp)
 {
-    // TODO: make sure units are correct (they probably aren't)
-    return All.DMB_DarkMatterMass * vel_disp / 3;
+    return All.DMB_DarkMatterMass * vel_disp / 3 / BOLTZMANN_CGS;
 }
 
 /*! Computes exchange rates for a gas particle (DM -> B) and stores them in `out`. */
@@ -97,23 +121,27 @@ void compute_exch_rates_gas(int i, double pdot[3], double* qdot) {
         return;
     }
 
-    // compute dV := V_DM - V_gas
+    // compute dV := V_DM - V_gas in [cm/s]
     double dV[3];
-    for (k = 0; k < 3; k++) { dV[k] = P[i].DMB_VDM[k] - P[i].Vel[k]; }
+    for (k = 0; k < 3; k++) {
+        dV[k] = (P[i].DMB_VDM[k] - P[i].Vel[k]) / All.cf_atime * UNIT_VEL_IN_CGS;
+    }
 
-    // compute densities
-    double rho_B = SphP[i].Density * All.cf_a3inv;
-    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv;
+    // compute densities in [cgs]
+    double rho_B = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
 
-    // compute temperatures
+    // compute temperatures in [K]
     double u_B = SphP[i].InternalEnergyPred;
     double mu=1, ne=1, nh0=0, nHe0, nHepp, nhp, nHeII; // pull various known thermal properties, prepare to extract others //
-    double T_B = ThermalProperties(u_B, rho_B, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-    double T_DM = temperature_DM(P[i].DMB_VelDispDM);
+    double T_B = ThermalProperties(u_B, rho_B, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // [K]
 
-    // compute 'microparticle' masses
-    double m_B = mu * PROTONMASS_CGS; // TODO: gotta work out the units
-    double m_DM = All.DMB_DarkMatterMass;
+    double sigma_sq = P[i].DMB_VelDispDM * P[i].DMB_VelDispDM * UNIT_VEL_IN_CGS * UNIT_VEL_IN_CGS; // no co-moving factor; taken care of in hsml loop
+    double T_DM = temperature_DM(sigma_sq); // [K]
+
+    // compute 'microparticle' masses in [g]
+    double m_B = mu * PROTONMASS_CGS;  // [g]
+    double m_DM = All.DMB_DarkMatterMass;  // [g]
 
     // compute Pdot, Qdot
     double Pdot[3], Qdot;
@@ -134,20 +162,23 @@ void compute_exch_rates_DM(int i, double pdot[3], double* qdot) {
         return;
     }
 
-    // compute dV := V_DM - V_gas
+    // compute dV := V_DM - V_gas in [cgs]
     double dV[3];
-    for (k = 0; k < 3; k++) { dV[k] = P[i].Vel[k] - P[i].DMB_VGas[k]; }
+    for (k = 0; k < 3; k++) {
+        dV[k] = (P[i].Vel[k] - P[i].DMB_VGas[k]) / All.cf_atime * UNIT_VEL_IN_CGS;
+    }
 
-    // compute densities
-    double rho_B = P[i].DMB_DensityGas * All.cf_a3inv;
-    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv;
+    // compute densities [cgs]
+    double rho_B = P[i].DMB_DensityGas * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
 
-    // compute temperatures
+    // compute temperatures [K]
     double T_B = P[i].DMB_TemperatureGas;
-    double T_DM = temperature_DM(P[i].DMB_VelDispDM);
+    double sigma_sq = P[i].DMB_VelDispDM * P[i].DMB_VelDispDM * UNIT_VEL_IN_CGS * UNIT_VEL_IN_CGS; // no comoving factor; taken care of in hsml loop
+    double T_DM = temperature_DM(sigma_sq);
 
-    // compute 'microparticle' masses
-    double m_B = P[i].DMB_MicroparticleMassGas * PROTONMASS_CGS; // TODO: gotta work out the units
+    // compute 'microparticle' masses [cgs]
+    double m_B = P[i].DMB_MicroparticleMassGas * PROTONMASS_CGS;
     double m_DM = All.DMB_DarkMatterMass;
 
     // compute Pdot, Qdot
@@ -165,6 +196,43 @@ void compute_exch_rates(int i, double pdot[3], double* qdot)
 {
     if (P[i].Type == 0) { compute_exch_rates_gas(i, pdot, qdot); }
     else if (P[i].Type == 1) { compute_exch_rates_DM(i, pdot, qdot); }
+}
+
+void compute_kicks_gas(int i, double v_kick[3], double *q_kick) {
+    int k;
+    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+
+    double v_coeff = dt / (P[i].DMB_DensityGas * All.cf_a3inv);
+    double v_units = 1 / UNIT_VEL_IN_CGS / All.cf_atime; // phys -> code
+    for (k = 0; k < 3; k++) { v_kick[k] = v_coeff * P[i].DMB_MomExch[k] * v_units; }
+
+    double q_coeff = dt * P[i].Mass / (SphP[i].Density * All.cf_a3inv);
+    double q_units = 1 / UNIT_ENERGY_IN_CGS; // phys -> code
+    *q_kick = q_coeff * P[i].DMB_HeatExch * q_units;
+}
+
+void compute_kicks_DM(int i, double v_kick[3], double *q_kick) {
+    int k;
+    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+
+    double v_coeff = dt / (P[i].DMB_DensityDM * All.cf_a3inv);
+    double v_units = 1 / UNIT_VEL_IN_CGS / All.cf_atime; // phys -> code
+    for (k = 0; k < 3; k++) { v_kick[k] = v_coeff * P[i].DMB_MomExch[k] * v_units; }
+
+    *q_kick = 0;  // not tracking DM internal energy at present
+}
+
+/*! Computes the velocity and internal energy kicks for particle i.
+ *  The momentum and heat exchange rates are per unit time and unit volume
+ *  The velocity kick is thus:
+ *    dV := MomExchRate / M * dt * vol = MomExchRate * dt / density
+ *  The energy kick is thus:
+ *    dQ := HeatExchRate * dt * vol,    vol estimated by (M / density)
+ *  The kicks returned are in code units.
+ */
+void compute_kicks(int i, double v_kick[3], double *q_kick) {
+    if (P[i].Type == 0) { compute_kicks_gas(i, v_kick, q_kick); }
+    else if (P[i].Type == 1) { compute_kicks_DM(i, v_kick, q_kick); }
 }
 
 #endif
