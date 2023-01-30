@@ -1762,8 +1762,8 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef DM_DMB
-    MyDouble DMB_InteractionCrossSection;
-    MyDouble DMB_DarkMatterMass;
+    MyDouble DMB_InteractionCrossSection;  /*< dark matter-baryon interaction cross section in [cm^2/g] */
+    MyDouble DMB_DarkMatterMass;  /*!< mass of the microscopic dark matter particles in [g] */
     int DMB_InteractionPowerScale;
 #endif
 
