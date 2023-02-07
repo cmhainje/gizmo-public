@@ -744,7 +744,7 @@ void init(void)
 #endif
 
 #ifdef DM_DMB
-    if (RestartFlag != 3 && RestartFlag != 5) { DMB_setup_smoothinglengths(); }
+    if (RestartFlag != 3 && RestartFlag != 5) { dmb_setup_smoothinglengths(); }
 #endif
 
 #if defined GALSF_SFR_IMF_VARIATION
@@ -1240,7 +1240,7 @@ void dmb_setup_smoothinglengths(void)
         }
     }
     if(ThisTask == 0) {printf("computing vel_disp around gas and DM particles.\n");}
-    disp_density();
+    dmb_density();
 }
 #endif
 
