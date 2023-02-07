@@ -4,7 +4,6 @@
 
 #include "../allvars.h"
 #include "../proto.h"
-#include "../kernel.h"
 
 /*! \file dmb_core.c
  *  \brief Fuctions and routines needed for the calculations of dark matter-baryon interactions
