@@ -27,10 +27,10 @@
 
 #ifdef DM_DMB
 
-#define CORE_FUNCTION_NAME disp_density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define INPUTFUNCTION_NAME disp_particle2in_density    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
-#define OUTPUTFUNCTION_NAME disp_out2particle_density  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(disp_density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CORE_FUNCTION_NAME dmb_density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define INPUTFUNCTION_NAME dmb_particle2in_density    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
+#define OUTPUTFUNCTION_NAME dmb_out2particle_density  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(dmb_density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 /* this structure defines the variables that need to be sent -from- the 'searching' element */
@@ -43,7 +43,7 @@ static struct INPUT_STRUCT_NAME
 *DATAIN_NAME, *DATAGET_NAME;
 
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
-void disp_particle2in_density(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
+void dmb_particle2in_density(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
     in->Hsml = P[i].DMB_Hsml;
@@ -71,7 +71,7 @@ static struct OUTPUT_STRUCT_NAME
 *DATARESULT_NAME, *DATAOUT_NAME;
 
 /* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
-void disp_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
+void dmb_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
     ASSIGN_ADD(P[i].DMB_NumNgb, out->DM_Ngb + out->Gas_Ngb, mode);
 
@@ -92,9 +92,9 @@ void disp_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, 
 }
 
 
-/* routine to determine if we need to use disp_density to calculate Hsml */
-int disp_density_isactive(int i);
-int disp_density_isactive(int i)
+/* routine to determine if we need to use dmb_density to calculate Hsml */
+int dmb_density_isactive(int i);
+int dmb_density_isactive(int i)
 {
     if(P[i].TimeBin < 0) return 0;
     if(P[i].Type > 1) return 0; // only gas and DM particles //
@@ -105,7 +105,7 @@ int disp_density_isactive(int i)
 
 /*! This function represents the core of the density computation. The target particle may either be local, or reside in the communication buffer. */
 /*!   -- this subroutine contains no writes to shared memory -- */
-int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
+int dmb_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
@@ -155,7 +155,7 @@ int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnode
 }
 
 
-void disp_density(void)
+void dmb_density(void)
 {
     /* initialize variables used below, in particlar the structures we need to call throughout the iteration */
     CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second();
@@ -164,7 +164,7 @@ void disp_density(void)
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
     /* initialize anything we need to about the active particles before their loop */
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {if(disp_density_isactive(i)) {P[i].DMB_NumNgb = 0; Left[i] = Right[i] = 0;}}
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {if(dmb_density_isactive(i)) {P[i].DMB_NumNgb = 0; Left[i] = Right[i] = 0;}}
     
     /* allocate buffers to arrange communication */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
@@ -177,7 +177,7 @@ void disp_density(void)
         double tstart = my_second(), tend;
         for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         {
-            if(disp_density_isactive(i))
+            if(dmb_density_isactive(i))
             {
                 redo_particle = 0; /* now check whether we have enough neighbours, and are below the maximum search radius */
                 double maxsoft = DMIN(All.MaxHsml, 10.0*PPP[i].Hsml);
@@ -247,7 +247,7 @@ void disp_density(void)
                     }
                 }
                 else {P[i].TimeBin = -P[i].TimeBin - 1;}	/* Mark as inactive */
-            } //  if(disp_density_isactive(i))
+            } //  if(dmb_density_isactive(i))
         } // for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
 
         tend = my_second();
@@ -257,7 +257,7 @@ void disp_density(void)
         {
             iter++;
             if(iter > 0 && ThisTask == 0) {if(iter > 10) printf("DM disp: ngb iteration %d: need to repeat for %d%09d particles.\n", iter, (int) (ntot / 1000000000), (int) (ntot % 1000000000));}
-            if(iter > MAXITER) {printf("DM disp: failed to converge in neighbour iteration in disp_density()\n"); fflush(stdout); endrun(1155);}
+            if(iter > MAXITER) {printf("DM disp: failed to converge in neighbour iteration in dmb_density()\n"); fflush(stdout); endrun(1155);}
         }
     }
     while(ntot > 0);
@@ -276,7 +276,7 @@ void disp_density(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         int k;
-        if(disp_density_isactive(i))
+        if(dmb_density_isactive(i))
         {
             // Gas
             if (P[i].DMB_NumNgbGas > 0) {

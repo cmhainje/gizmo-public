@@ -113,7 +113,9 @@ void run(void)
 #endif
 
 #ifdef DM_DMB
-        dmb_density();
+        {
+            dmb_density();
+        }
 #endif
 
         /* flag particles which will be feedback centers, so kernel lengths can be computed for them */
