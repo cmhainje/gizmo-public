@@ -38,7 +38,13 @@ double script_A(double w, double T_over_m)
     double c = sqrt((1 << (5 + n)) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
     //               ^^ (1 << k) computes 2^k as an int
 
-    return c * pow(sigma, 0.5 * (n + 1.0)) * alpha;
+    double out = c * pow(sigma, 0.5 * (n + 1.0)) * alpha;
+
+    if (isnan(out)) {
+        printf("script_A returning NaN; inputs were w=%f, T_over_m=%f\n", w, T_over_m);
+    }
+
+    return out;
 }
 
 /*! Implements the script B function (assuming a power-law cross section).
@@ -54,7 +60,13 @@ double script_B(double w, double T_over_m)
     double c = sqrt((1 << (5 + n)) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
     //               ^^ (1 << k) computes 2^k as an int
 
-    return 3.0 * c * pow(sigma, 0.5 * (n + 3.0)) * beta;
+    double out = 3.0 * c * pow(sigma, 0.5 * (n + 3.0)) * beta;
+
+    if (isnan(out)) {
+        printf("script_B returning NaN; inputs were w=%f, T_over_m=%f\n", w, T_over_m);
+    }
+
+    return out;
 }
 
 /*! Computes the momentum exchange rate (B -> DM) per unit volume (which is filled into `out`).
@@ -76,7 +88,17 @@ void mom_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, double
     double coeff = -(rho_DM * rho_B) / (m_DM + m_B) * A;
 
     int i;
-    for (i = 0; i < 3; i++) { out[i] = coeff * dV[i]; }
+    bool nan_detected = false;
+    for (i = 0; i < 3; i++) { out[i] = coeff * dV[i]; nan_detected = nan_detected || isnan(out[i]); }
+    if (nan_detected) {
+        printf("mom_exch_rate returning NaN. inputs were:");
+        printf("  rho_DM = %f\n", rho_DM);
+        printf("  T_DM = %f\n", T_DM);
+        printf("  m_DM = %f\n", m_DM);
+        printf("  rho_B = %f\n", rho_B);
+        printf("  T_B = %f\n", T_B);
+        printf("  m_B = %f\n", m_B);
+    }
 }
 
 /*! Computes the heat exchange rate (B -> DM) per unit volume.
@@ -97,7 +119,19 @@ double heat_exch_rate(double dV[3], double rho_DM, double T_DM, double m_DM, dou
     double A = script_A(dV_mag, v_th_2);
     double B = script_B(dV_mag, v_th_2);
     double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
-    return coeff * (B * (T_B - T_DM) + T_DM / m_DM * A * dV_mag * dV_mag);
+    double out = coeff * (B * (T_B - T_DM) + T_DM / m_DM * A * dV_mag * dV_mag);
+
+    if (isnan(out)) {
+        printf("heat_exch_rate returning NaN. inputs were:");
+        printf("  rho_DM = %f\n", rho_DM);
+        printf("  T_DM = %f\n", T_DM);
+        printf("  m_DM = %f\n", m_DM);
+        printf("  rho_B = %f\n", rho_B);
+        printf("  T_B = %f\n", T_B);
+        printf("  m_B = %f\n", m_B);
+    }
+
+    return out;
 }
 
 
