@@ -53,14 +53,14 @@ void dmb_particle2in_density(struct INPUT_STRUCT_NAME *in, int i, int loop_itera
 /* this structure defines the variables that need to be sent -back to- the 'searching' element */
 static struct OUTPUT_STRUCT_NAME
 {
-    MyLongDouble DM_Ngb;
+    int DM_Ngb;
     MyLongDouble DM_Vx;
     MyLongDouble DM_Vy;
     MyLongDouble DM_Vz;
     MyLongDouble DM_VelDisp;
     MyLongDouble DM_Density;
 
-    MyLongDouble Gas_Ngb;
+    int Gas_Ngb;
     MyLongDouble Gas_Vx;
     MyLongDouble Gas_Vy;
     MyLongDouble Gas_Vz;
@@ -271,6 +271,8 @@ void dmb_density(void)
     {
         if(P[i].TimeBin < 0) {P[i].TimeBin = -P[i].TimeBin - 1;}
     }
+
+    printf("computing and applying DMB heat/momentum exchanges\n");
     
     /* now that we are DONE iterating to find hsml, we can do the REAL final operations on the results */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -300,8 +302,25 @@ void dmb_density(void)
             if (P[i].DMB_NumNgbDM > 0) {
                 for (k = 0; k < 3; k++) { P[i].DMB_VDM[k] /= P[i].DMB_NumNgbDM; }
                 P[i].DMB_VelDispDM /= P[i].DMB_NumNgbDM;
-                P[i].DMB_VelDispDM = (1./All.cf_atime) * sqrt(P[i].DMB_VelDispDM - P[i].DMB_VDM[0] * P[i].DMB_VDM[0] - P[i].DMB_VDM[1] * P[i].DMB_VDM[1] - P[i].DMB_VDM[2] * P[i].DMB_VDM[2]) / 1.732;  // 1d velocity dispersion
+
+                double veldisp = 0;
+                if (P[i].DMB_NumNgbDM > 1) {
+                    veldisp = (1./All.cf_atime) * sqrt(P[i].DMB_VelDispDM - P[i].DMB_VDM[0] * P[i].DMB_VDM[0] - P[i].DMB_VDM[1] * P[i].DMB_VDM[1] - P[i].DMB_VDM[2] * P[i].DMB_VDM[2]) / 1.732;  // 1d velocity dispersion
+                }
+
                 P[i].DMB_DensityDM /= P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml;
+
+                if (isnan(veldisp)) {
+                    printf("DMB_VelDispDM is nan. inputs:\n");
+                    printf("  VelDisp before:  %f\n", P[i].DMB_VelDispDM);
+                    printf("  NumNeighbors:    %d\n", P[i].DMB_NumNgbDM);
+                    printf("  DMB_VDM[0] (Vx): %f\n", P[i].DMB_VDM[0]);
+                    printf("  DMB_VDM[1] (Vy): %f\n", P[i].DMB_VDM[1]);
+                    printf("  DMB_VDM[2] (Vz): %f\n", P[i].DMB_VDM[2]);
+                    printf("  Vel mag sq:      %f\n", P[i].DMB_VDM[0] * P[i].DMB_VDM[0] + P[i].DMB_VDM[1] * P[i].DMB_VDM[1] + P[i].DMB_VDM[2] * P[i].DMB_VDM[2]);
+                }
+                P[i].DMB_VelDispDM = veldisp;
+
             } else {
                 if (P[i].DMB_VelDispDM < 0 || isnan(P[i].DMB_VelDispDM)) {
                     P[i].DMB_VelDispDM = sqrt(P[i].Vel[0]*P[i].Vel[0]+P[i].Vel[1]*P[i].Vel[1]+P[i].Vel[2]*P[i].Vel[2])/All.cf_atime;
@@ -312,7 +331,18 @@ void dmb_density(void)
             }
 
             compute_exch_rates(i, P[i].DMB_MomExch, &P[i].DMB_HeatExch);
+
+            bool exch_nan = (isnan(P[i].DMB_HeatExch) || isnan(P[i].DMB_MomExch[0])) || (isnan(P[i].DMB_MomExch[1] || isnan(P[i].DMB_MomExch[2])));
+            if (exch_nan) {
+                printf("nan detected in computed exchange rates\n");
+            }
+
             double v_kick[3], q_kick; compute_kicks(i, v_kick, &q_kick);
+
+            bool kick_nan = (isnan(q_kick) || isnan(v_kick[0])) || (isnan(v_kick[1] || isnan(v_kick[2])));
+            if (kick_nan) {
+                printf("nan detected in computed kicks\n");
+            }
 
             for (k = 0; k < 3; k++) { P[i].Vel[k] += v_kick[k]; }
 
