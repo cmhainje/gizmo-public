@@ -15,6 +15,8 @@
 
 #ifdef DM_DMB
 
+double HYPERG_ASYMP_FACTOR = 100;
+
 /*! Computes the value of the momentum-exchange cross section at a given velocity.
  *  Units:
  *    velocity: physical, cgs (cm/s)
@@ -32,6 +34,9 @@ double cross_section(double velocity)
  */
 double script_A(double w, double kT_over_m)
 {
+    // asymptotic limit, eq. 34
+    if (w * w / kT_over_m > HYPERG_ASYMP_FACTOR) { return w * cross_section(w); }
+
     int n = All.DMB_InteractionPowerScale;
     double alpha = gsl_sf_hyperg_1F1(-0.5 * (n + 1), 2.5, -0.5 * w * w / kT_over_m);
     double sigma = All.DMB_InteractionCrossSection;
@@ -54,6 +59,9 @@ double script_A(double w, double kT_over_m)
  */
 double script_B(double w, double kT_over_m)
 {
+    // asymptotic limit, eq. 34
+    if (w * w / kT_over_m > HYPERG_ASYMP_FACTOR) { return w * w * w * cross_section(w); }
+
     int n = All.DMB_InteractionPowerScale;
     double beta = gsl_sf_hyperg_1F1(-0.5 * (n + 3), 1.5, -0.5 * w * w / kT_over_m);
     double sigma = All.DMB_InteractionCrossSection;
