@@ -22,7 +22,7 @@
  */
 double cross_section(double velocity)
 {
-    return All.DMB_InteractionCrossSection * All.DMB_DarkMatterMass * pow(velocity, All.DMB_InteractionPowerScale);
+    return All.DMB_InteractionCrossSection * pow(velocity, All.DMB_InteractionPowerScale);
 }
 
 /*! Implements the script A function (assuming a power-law cross section).
