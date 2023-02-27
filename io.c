@@ -1746,7 +1746,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++) {
                 if(P[pindex].Type == type) {
                     for(k = 0; k < 3; k++) {
-                        fp[k] = (MyOutputFloat) P[pindex].DMB_VGAS[k];
+                        fp[k] = (MyOutputFloat) P[pindex].DMB_VGas[k];
                     }
                     fp += 3;
                     n++;
