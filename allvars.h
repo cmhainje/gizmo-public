@@ -1853,9 +1853,9 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef DM_DMB
-    MyDouble DMB_InteractionCrossSection;  /*< dark matter-baryon interaction cross section in [cm^2/g] */
-    MyDouble DMB_DarkMatterMass;  /*!< mass of the microscopic dark matter particles in [g] */
-    int DMB_InteractionPowerScale;
+    MyDouble DMB_InteractionCrossSection;  /*!< dark matter-baryon interaction cross section in [cm^2] */
+    MyDouble DMB_DarkMatterMass;           /*!< mass of the microscopic dark matter particles in [g] */
+    int DMB_InteractionPowerScale;         /*!< relative velocity is raised to this power to compute cross section */
 #endif
 
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
