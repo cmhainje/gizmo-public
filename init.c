@@ -173,10 +173,13 @@ void init(void)
     init_self_interactions();
 #endif
 
-
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
     {
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] = 0;}
+
+#ifdef DM_DMB
+        if (RestartFlag == 0) { P[i].DMB_InternalEnergy = 0; }
+#endif
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* init tidal tensor for first output (not used for calculation) */
         P[i].tidal_tensorps[0][0]=P[i].tidal_tensorps[0][1]=P[i].tidal_tensorps[0][2]=0;

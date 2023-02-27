@@ -2523,18 +2523,20 @@ extern ALIGN(32) struct particle_data
 
 #ifdef DM_DMB
     MyFloat  DMB_Hsml;    /*!< smoothing length to find neighboring particles */
-    int      DMB_NumNgb;  /*! total number of neighbor DM and gas particles */
+    int      DMB_NumNgb;  /*!< total number of neighbor DM and gas particles */
 
     int      DMB_NumNgbDM;   /*!< number of neighbor DM particles */
-    MyDouble DMB_VDM[3];     /*! mean velocity of local DM */
+    MyDouble DMB_VDM[3];     /*!< mean velocity of local DM */
     MyDouble DMB_VelDispDM;  /*!< surrounding velocity and velocity dispersion */
     MyDouble DMB_DensityDM;  /*!< local density */
 
     int      DMB_NumNgbGas;             /*!< number of neighboring gas cells */
-    MyDouble DMB_VGas[3];               /*! mean velocity of local gas */
+    MyDouble DMB_VGas[3];               /*!< mean velocity of local gas */
     MyDouble DMB_DensityGas;            /*!< local gas density */
     MyDouble DMB_TemperatureGas;        /*!< mean temperature of local gas */
     MyDouble DMB_MicroparticleMassGas;  /*!< mean microparticle mass of local gas */
+
+    MyDouble DMB_InternalEnergy; /*!< internal energy of the particle (for tracking only) */
 
     MyDouble DMB_MomExch[3];  /*!< momentum exchange rate */
     MyDouble DMB_HeatExch;    /*!< heat exchange rate */
