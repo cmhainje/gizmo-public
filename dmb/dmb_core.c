@@ -34,11 +34,11 @@ double script_A(double w, double T_over_m)
 {
     int n = All.DMB_InteractionPowerScale;
     double alpha = gsl_sf_hyperg_1F1(-0.5 * (n + 1), 2.5, -0.5 * w * w / T_over_m);
-    double sigma = cross_section(T_over_m);
+    double sigma = All.DMB_InteractionCrossSection;
     double c = sqrt((1 << (5 + n)) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
     //               ^^ (1 << k) computes 2^k as an int
 
-    double out = c * pow(sigma, 0.5 * (n + 1.0)) * alpha;
+    double out = c * sigma * pow(T_over_m, 0.5 * (n + 1.0)) * alpha;
 
     if (isnan(out)) {
         printf("script_A returning NaN; inputs were w=%f, T_over_m=%f\n", w, T_over_m);
@@ -56,11 +56,11 @@ double script_B(double w, double T_over_m)
 {
     int n = All.DMB_InteractionPowerScale;
     double beta = gsl_sf_hyperg_1F1(-0.5 * (n + 3), 1.5, -0.5 * w * w / T_over_m);
-    double sigma = cross_section(T_over_m);
+    double sigma = All.DMB_InteractionCrossSection;
     double c = sqrt((1 << (5 + n)) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
     //               ^^ (1 << k) computes 2^k as an int
 
-    double out = 3.0 * c * pow(sigma, 0.5 * (n + 3.0)) * beta;
+    double out = 3.0 * c * sigma * pow(T_over_m, 0.5 * (n + 3.0)) * beta;
 
     if (isnan(out)) {
         printf("script_B returning NaN; inputs were w=%f, T_over_m=%f\n", w, T_over_m);
