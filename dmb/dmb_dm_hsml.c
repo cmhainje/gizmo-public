@@ -331,18 +331,7 @@ void dmb_density(void)
             }
 
             compute_exch_rates(i, P[i].DMB_MomExch, &P[i].DMB_HeatExch);
-
-            bool exch_nan = (isnan(P[i].DMB_HeatExch) || isnan(P[i].DMB_MomExch[0])) || (isnan(P[i].DMB_MomExch[1] || isnan(P[i].DMB_MomExch[2])));
-            if (exch_nan) {
-                printf("nan detected in computed exchange rates\n");
-            }
-
             double v_kick[3], q_kick; compute_kicks(i, v_kick, &q_kick);
-
-            bool kick_nan = (isnan(q_kick) || isnan(v_kick[0])) || (isnan(v_kick[1] || isnan(v_kick[2])));
-            if (kick_nan) {
-                printf("nan detected in computed kicks\n");
-            }
 
             for (k = 0; k < 3; k++) { P[i].Vel[k] += v_kick[k]; }
 
