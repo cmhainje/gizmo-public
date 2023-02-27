@@ -280,7 +280,7 @@ void dmb_density(void)
         int k;
         if(dmb_density_isactive(i))
         {
-            // Gas
+            // Gas neighbors
             if (P[i].DMB_NumNgbGas > 0) {
                 for (k = 0; k < 3; k++) { P[i].DMB_VGas[k] /= P[i].DMB_NumNgbGas; }
                 P[i].DMB_TemperatureGas /= P[i].DMB_NumNgbGas;
@@ -298,7 +298,7 @@ void dmb_density(void)
                 }
             }
 
-            // Dark matter
+            // Dark matter neighbors
             if (P[i].DMB_NumNgbDM > 0) {
                 for (k = 0; k < 3; k++) { P[i].DMB_VDM[k] /= P[i].DMB_NumNgbDM; }
                 P[i].DMB_VelDispDM /= P[i].DMB_NumNgbDM;
@@ -333,7 +333,7 @@ void dmb_density(void)
             compute_exch_rates(i, P[i].DMB_MomExch, &P[i].DMB_HeatExch);
             double v_kick[3], q_kick; compute_kicks(i, v_kick, &q_kick);
 
-            for (k = 0; k < 3; k++) { P[i].Vel[k] += v_kick[k]; }
+            for (k = 0; k < 3; k++) { P[i].Vel[k] += v_kick[k]; P[i].DMB_InternalEnergy += q_kick; }
 
             if (P[i].Type == 0) {
                 for (k = 0; k < 3; k++) { SphP[i].VelPred[k] += v_kick[k]; }
