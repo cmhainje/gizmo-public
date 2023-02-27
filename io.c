@@ -1660,6 +1660,172 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
         break;
 
+
+        case IO_DMB_HSML:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_Hsml;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_NUMNGB:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *ip_int++ = (int) P[pindex].DMB_NumNgb;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_NUMNGBDM:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *ip_int++ = (int) P[pindex].DMB_NumNgbDM;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_VDM:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    for(k = 0; k < 3; k++) {
+                        fp[k] = (MyOutputFloat) P[pindex].DMB_VDM[k];
+                    }
+                    fp += 3;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_VELDISPDM:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_VelDispDM;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_DENSITYDM:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_DensityDM;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_NUMNGBGAS:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *ip_int++ = (int) P[pindex].DMB_NumNgbGas;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_VGAS:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    for(k = 0; k < 3; k++) {
+                        fp[k] = (MyOutputFloat) P[pindex].DMB_VGAS[k];
+                    }
+                    fp += 3;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_DENSITYGAS:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_DensityGas;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_TEMPERATUREGAS:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_TemperatureGas;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_MICROPARTICLEMASSGAS:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_MicroparticleMassGas;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_INTERNALENERGY:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_InternalEnergy;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_MOMEXCH:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    for(k = 0; k < 3; k++) {
+                        fp[k] = (MyOutputFloat) P[pindex].DMB_MomExch[k];
+                    }
+                    fp += 3;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_HEATEXCH:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_HeatExch;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+
+
         case IO_LASTENTRY:
             endrun(213);
             break;
@@ -1699,6 +1865,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_VORT:
         case IO_BH_ANGMOM:
         case IO_ANNIHILATION_RADIATION:
+        case IO_DMB_VDM:
+        case IO_DMB_VGAS:
+        case IO_DMB_MOMEXCH:
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
@@ -1715,6 +1884,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
         case IO_STAGE_PROTOSTAR:
+        case IO_DMB_NUMNGB:
+        case IO_DMB_NUMNGBDM:
+        case IO_DMB_NUMNGBGAS:
             bytes_per_blockelement = sizeof(int);
             break;
             
@@ -1801,6 +1973,14 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_DENS_AROUND_STAR:
         case IO_DELAY_TIME_HII:
         case IO_MOLECULARFRACTION:
+        case IO_DMB_HSML:
+        case IO_DMB_VELDISPDM:
+        case IO_DMB_DENSITYDM:
+        case IO_DMB_DENSITYGAS:
+        case IO_DMB_TEMPERATUREGAS:
+        case IO_DMB_MICROPARTICLEMASSGAS:
+        case IO_DMB_INTERNALENERGY:
+        case IO_DMB_HEATEXCH:
             if(mode)
                 bytes_per_blockelement = sizeof(MyInputFloat);
             else
@@ -1959,6 +2139,9 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
         case IO_STAGE_PROTOSTAR:
+        case IO_DMB_NUMNGB:
+        case IO_DMB_NUMNGBDM:
+        case IO_DMB_NUMNGBGAS:
             typekey = 0;		/* native int */
             break;
             
@@ -1990,6 +2173,9 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VORT:
         case IO_BH_ANGMOM:
         case IO_ANNIHILATION_RADIATION:
+        case IO_DMB_VDM:
+        case IO_DMB_VGAS:
+        case IO_DMB_MOMEXCH:
             values = 3;
             break;
 
@@ -2083,6 +2269,17 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_DENS_AROUND_STAR:
         case IO_DELAY_TIME_HII:
         case IO_MOLECULARFRACTION:
+        case IO_DMB_HSML:
+        case IO_DMB_VELDISPDM:
+        case IO_DMB_DENSITYDM:
+        case IO_DMB_DENSITYGAS:
+        case IO_DMB_TEMPERATUREGAS:
+        case IO_DMB_MICROPARTICLEMASSGAS:
+        case IO_DMB_INTERNALENERGY:
+        case IO_DMB_HEATEXCH:
+        case IO_DMB_NUMNGB:
+        case IO_DMB_NUMNGBDM:
+        case IO_DMB_NUMNGBGAS:
             values = 1;
             break;
 
@@ -2381,6 +2578,31 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_SHEET_ORIENTATION:
         case IO_INIT_DENSITY:
             for(i = 0; i < 6; i++) {if(((1 << i) & (GDE_TYPES))) {nsel += header.npart[i];} else {typelist[i] = 0;}}
+            return nsel;
+            break;
+
+        case IO_DMB_HSML:
+        case IO_DMB_NUMNGB:
+        case IO_DMB_NUMNGBDM:
+        case IO_DMB_VDM:
+        case IO_DMB_VELDISPDM:
+        case IO_DMB_DENSITYDM:
+        case IO_DMB_NUMNGBGAS:
+        case IO_DMB_VGAS:
+        case IO_DMB_DENSITYGAS:
+        case IO_DMB_TEMPERATUREGAS:
+        case IO_DMB_MICROPARTICLEMASSGAS:
+        case IO_DMB_INTERNALENERGY:
+        case IO_DMB_MOMEXCH:
+        case IO_DMB_HEATEXCH:
+            for(i = 0; i < 6; i++) {
+                if (i < 2 && ngas > 0 && header.npart[1] > 0) {
+                    typelist[i] = 1;
+                    nsel += header.npart[i];
+                } else {
+                    typelist[i] = 0;
+                }
+            }
             return nsel;
             break;
 
@@ -2937,6 +3159,25 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
+        case IO_DMB_HSML:
+        case IO_DMB_NUMNGB:
+        case IO_DMB_NUMNGBDM:
+        case IO_DMB_VDM:
+        case IO_DMB_VELDISPDM:
+        case IO_DMB_DENSITYDM:
+        case IO_DMB_NUMNGBGAS:
+        case IO_DMB_VGAS:
+        case IO_DMB_DENSITYGAS:
+        case IO_DMB_TEMPERATUREGAS:
+        case IO_DMB_MICROPARTICLEMASSGAS:
+        case IO_DMB_INTERNALENERGY:
+        case IO_DMB_MOMEXCH:
+        case IO_DMB_HEATEXCH:
+#ifdef DM_DMB
+            return 1;
+#endif
+            break;
+
         case IO_LASTENTRY: /* will not occur */
             break;
     }
@@ -3324,6 +3565,49 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             strncpy(label, "derd", 4);
             break;
 
+        case IO_DMB_HSML:
+            strncpy(label, "dbHS", 4);
+            break;
+        case IO_DMB_NUMNGB:
+            strncpy(label, "dbNB", 4);
+            break;
+        case IO_DMB_NUMNGBDM:
+            strncpy(label, "dbND", 4);
+            break;
+        case IO_DMB_VDM:
+            strncpy(label, "dbVD", 4);
+            break;
+        case IO_DMB_VELDISPDM:
+            strncpy(label, "dbV2", 4);
+            break;
+        case IO_DMB_DENSITYDM:
+            strncpy(label, "dbRD", 4);
+            break;
+        case IO_DMB_NUMNGBGAS:
+            strncpy(label, "dbNG", 4);
+            break;
+        case IO_DMB_VGAS:
+            strncpy(label, "dbVG", 4);
+            break;
+        case IO_DMB_DENSITYGAS:
+            strncpy(label, "dbRG", 4);
+            break;
+        case IO_DMB_TEMPERATUREGAS:
+            strncpy(label, "dbTG", 4);
+            break;
+        case IO_DMB_MICROPARTICLEMASSGAS:
+            strncpy(label, "dbmG", 4);
+            break;
+        case IO_DMB_INTERNALENERGY:
+            strncpy(label, "dbUI", 4);
+            break;
+        case IO_DMB_MOMEXCH:
+            strncpy(label, "dbMX", 4);
+            break;
+        case IO_DMB_HEATEXCH:
+            strncpy(label, "dbHX", 4);
+            break;
+
         case IO_LASTENTRY:
             endrun(217);
             break;
@@ -3705,6 +3989,48 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_DYNERRORDEFAULT:
             strcpy(buf, "DynamicErrorDefault");
+            break;
+        case IO_DMB_HSML:
+            strcpy(buf, "DMB_Hsml");
+            break;
+        case IO_DMB_NUMNGB:
+            strcpy(buf, "DMB_NumNgb");
+            break;
+        case IO_DMB_NUMNGBDM:
+            strcpy(buf, "DMB_NumNgbDM");
+            break;
+        case IO_DMB_VDM:
+            strcpy(buf, "DMB_VDM");
+            break;
+        case IO_DMB_VELDISPDM:
+            strcpy(buf, "DMB_VelDispDM");
+            break;
+        case IO_DMB_DENSITYDM:
+            strcpy(buf, "DMB_DensityDM");
+            break;
+        case IO_DMB_NUMNGBGAS:
+            strcpy(buf, "DMB_NumNgbGas");
+            break;
+        case IO_DMB_VGAS:
+            strcpy(buf, "DMB_VGas");
+            break;
+        case IO_DMB_DENSITYGAS:
+            strcpy(buf, "DMB_DensityGas");
+            break;
+        case IO_DMB_TEMPERATUREGAS:
+            strcpy(buf, "DMB_TemperatureGas");
+            break;
+        case IO_DMB_MICROPARTICLEMASSGAS:
+            strcpy(buf, "DMB_MicroparticleMassGas");
+            break;
+        case IO_DMB_INTERNALENERGY:
+            strcpy(buf, "DMB_InternalEnergy");
+            break;
+        case IO_DMB_MOMEXCH:
+            strcpy(buf, "DMB_MomExch");
+            break;
+        case IO_DMB_HEATEXCH:
+            strcpy(buf, "DMB_HeatExch");
             break;
         case IO_LASTENTRY:
             endrun(218);
