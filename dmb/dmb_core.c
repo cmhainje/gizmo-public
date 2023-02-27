@@ -119,7 +119,7 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
     double A = script_A(dV_mag, v_th_2);
     double B = script_B(dV_mag, v_th_2);
     double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
-    double out = coeff * (B * (kT_B - kT_DM) + kT_DM / m_DM * A * dV_mag * dV_mag);
+    double out = coeff * (B * (kT_B - kT_DM) / (m_DM + m_B) + kT_DM / m_DM * A * dV_mag * dV_mag);
 
     if (isnan(out)) {
         printf("heat_exch_rate returning NaN. inputs were:");
