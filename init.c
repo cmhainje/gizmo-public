@@ -1228,7 +1228,7 @@ void dmb_setup_smoothinglengths(void)
     {
         for(i = 0; i < NumPart; i++)
         {
-            if(P[i].Type == 0)
+            if(P[i].Type == 0 || P[i].Type == 1)
             {
                 no = Father[i];
                 while(10 * 2.0 * 64 * P[i].Mass > Nodes[no].u.d.mass)
@@ -1241,6 +1241,21 @@ void dmb_setup_smoothinglengths(void)
                 // TODO: this looks like it's gonna need modified
                 double soft = All.SofteningTable[P[i].Type];
                 if(soft != 0) {if((P[i].DMB_Hsml >1000.*soft)||(PPP[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].DMB_Hsml = soft;}}
+
+                if (PPP[i].Hsml == 0) {
+                    PPP[i].Hsml = soft;
+                }
+
+                if (P[i].DMB_Hsml == 0) {
+                    printf("dmb_setup_smoothinglengths: hsml set to 0\n");
+                    printf("  ..ptype = %d\n", P[i].Type);
+                    printf("  ..mass = %d\n", P[i].Mass);
+                    printf("  ..softening length: %f\n", soft);
+                }
+
+                if (PPP[i].Hsml == 0) {
+                    printf("Warning! PPP.Hsml is 0 for particle %d\n", i);
+                }
             }
         }
     }
