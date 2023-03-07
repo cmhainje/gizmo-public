@@ -275,6 +275,14 @@ void dmb_density(void)
     printf("computing and applying DMB heat/momentum exchanges\n");
     
     /* now that we are DONE iterating to find hsml, we can do the REAL final operations on the results */
+    int gas_num = 0;
+    int gas_num_gas_ngb = 0;
+    int gas_num_dm_ngb = 0;
+    int dm_num = 0;
+    int dm_num_gas_ngb = 0;
+    int dm_num_dm_ngb = 0;
+
+
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         int k;
@@ -310,6 +318,12 @@ void dmb_density(void)
 
                 P[i].DMB_DensityDM /= P[i].DMB_Hsml * P[i].DMB_Hsml * P[i].DMB_Hsml;
 
+                if (!isfinite(P[i].DMB_DensityDM)) {
+                    printf("DMB_Density is not finite. Inputs:\n");
+                    printf("  NumNgbDM: %d\n", P[i].DMB_NumNgbDM);
+                    printf("  DMB_HSML: %e\n", P[i].DMB_Hsml);
+                }
+
                 if (isnan(veldisp)) {
                     printf("DMB_VelDispDM is nan. inputs:\n");
                     printf("  VelDisp before:  %f\n", P[i].DMB_VelDispDM);
@@ -340,8 +354,27 @@ void dmb_density(void)
                 SphP[i].InternalEnergy += q_kick;
                 SphP[i].InternalEnergyPred += q_kick;
             }
+
+            if (P[i].Type == 0) {
+                gas_num += 1;
+                gas_num_gas_ngb += P[i].DMB_NumNgbGas;
+                gas_num_dm_ngb += P[i].DMB_NumNgbDM;
+            } else {
+                dm_num += 1;
+                dm_num_gas_ngb += P[i].DMB_NumNgbGas;
+                dm_num_dm_ngb += P[i].DMB_NumNgbDM;
+            }
         }
     }
+
+    printf("gas:\n");
+    printf("    num gas cells:         %d\n", gas_num);
+    printf("    avg num gas neighbors: %f\n", (float) gas_num_gas_ngb/gas_num);
+    printf("    avg num dm neighbors:  %f\n", (float) gas_num_dm_ngb/gas_num);
+    printf("dm:\n");
+    printf("    num dm particles:      %d\n", dm_num);
+    printf("    avg num gas neighbors: %f\n", (float) dm_num_gas_ngb/dm_num);
+    printf("    avg num dm neighbors:  %f\n", (float) dm_num_dm_ngb/dm_num);
     
     /* collect some timing information */
     double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);

@@ -129,14 +129,17 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
     double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
     double out = coeff * (B * (kT_B - kT_DM) / (m_DM + m_B) + kT_DM / m_DM * A * dV_mag * dV_mag);
 
-    if (isnan(out)) {
-        printf("heat_exch_rate returning NaN. inputs were:");
-        printf("  rho_DM = %f\n", rho_DM);
-        printf("  kT_DM = %f\n", kT_DM);
-        printf("  m_DM = %f\n", m_DM);
-        printf("  rho_B = %f\n", rho_B);
-        printf("  kT_B = %f\n", kT_B);
-        printf("  m_B = %f\n", m_B);
+    if (isnan(out) | out == 0.0) {
+        if (isnan(out))
+            printf("heat_exch_rate returning NaN. inputs were:\n");
+        else
+            printf("heat_exch_rate returning zero. inputs were:\n");
+        printf("  rho_DM = %e\n", rho_DM);
+        printf("  kT_DM = %e\n", kT_DM);
+        printf("  m_DM = %e\n", m_DM);
+        printf("  rho_B = %e\n", rho_B);
+        printf("  kT_B = %e\n", kT_B);
+        printf("  m_B = %e\n", m_B);
     }
 
     return out;
@@ -254,15 +257,28 @@ void compute_kicks_gas(int i, double v_kick[3], double *q_kick) {
     double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 
     // velocity kick
-    double v_coeff = dt / (P[i].DMB_DensityGas * All.cf_a3inv);
-    double v_units = 1 / UNIT_VEL_IN_CGS / All.cf_atime; // phys -> code
     double v_kick_out[3];
-    for (k = 0; k < 3; k++) { v_kick_out[k] = v_coeff * P[i].DMB_MomExch[k] * v_units; }
+    if (
+        P[i].DMB_MomExch[0]*P[i].DMB_MomExch[0]
+        + P[i].DMB_MomExch[1]*P[i].DMB_MomExch[1]
+        + P[i].DMB_MomExch[2]*P[i].DMB_MomExch[2] == 0
+    ) {
+        for (k = 0; k < 3; k++) { v_kick_out[k] = 0; }
+    } else {
+        double v_coeff = dt / (P[i].DMB_DensityGas * All.cf_a3inv);
+        double v_units = 1 / UNIT_VEL_IN_CGS / All.cf_atime; // phys -> code
+        for (k = 0; k < 3; k++) { v_kick_out[k] = v_coeff * P[i].DMB_MomExch[k] * v_units; }
+    }
 
     // heat kick
-    double q_coeff = dt * P[i].Mass / (SphP[i].Density * All.cf_a3inv);
-    double q_units = 1 / UNIT_ENERGY_IN_CGS; // phys -> code
-    double q_kick_out = q_coeff * P[i].DMB_HeatExch * q_units;
+    double q_kick_out;
+    if (P[i].DMB_HeatExch == 0) {
+        q_kick_out = 0;
+    } else {
+        double q_coeff = dt * P[i].Mass / (SphP[i].Density * All.cf_a3inv);
+        double q_units = 1 / UNIT_ENERGY_IN_CGS; // phys -> code
+        q_kick_out = q_coeff * P[i].DMB_HeatExch * q_units;
+    }
 
     // nan checks
     if (isnan(q_kick_out) || isnan(v_kick_out[0]) || isnan(v_kick_out[1]) || isnan(v_kick_out[2]) ) {
@@ -293,6 +309,9 @@ void compute_kicks_DM(int i, double v_kick[3], double *q_kick) {
     // nan checks
     if (isnan(q_kick_out) || isnan(v_kick_out[0]) || isnan(v_kick_out[1]) || isnan(v_kick_out[2]) ) {
         printf("compute_kicks_DM: NaN in computed kicks\n");
+        printf("  ..DMB_DensityDM %f\n", P[i].DMB_DensityDM);
+        printf("  ..DMB_MomExch [%f, %f, %f]\n", P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2]);
+        printf("  ..DMB_HeatExch %f\n", P[i].DMB_HeatExch);
     }
 
     // write output
