@@ -152,7 +152,8 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
  */
 double temperature_DM(double vel_disp)
 {
-    return All.DMB_DarkMatterMass * vel_disp / 3;
+    return All.DMB_DarkMatterMass * vel_disp;
+    // return All.DMB_DarkMatterMass * vel_disp / 3;
 }
 
 /*! Computes exchange rates for a gas particle (DM -> B) and stores them in `out`. */
