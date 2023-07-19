@@ -55,6 +55,10 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 #ifdef DM_SIDM
     if((1 << particle_type_primary) & (DM_SIDM)) {return DM_SIDM;} /* SIDM particles see other SIDM particles, regardless of type/mass */
 #endif
+
+#ifdef DM_DMB
+    if(particle_type_primary == 1) {return 2;} /* 2^1: DM particles see each other */
+#endif
     
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     return (1 << particle_type_primary); /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */
@@ -107,6 +111,11 @@ static struct OUTPUT_STRUCT_NAME
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyLongDouble NV_T[3][3];
 #endif
+#ifdef DM_DMB
+    MyLongDouble NgbInt;
+    MyLongDouble VelMean[3];
+    MyLongDouble VelDisp;
+#endif
 }
  *DATARESULT_NAME, *DATAOUT_NAME;
 
@@ -120,6 +129,11 @@ void ags_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, i
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     {int j,k; for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(P[i].NV_T[k][j], out->NV_T[k][j], mode);}}}
+#endif
+#ifdef DM_DMB
+    int k; for (k = 0; k < 3; k++) { ASSIGN_ADD(P[i].AGS_VelMean[k], out->VelMean[k], mode); }
+    ASSIGN_ADD(P[i].AGS_VelDisp, out->VelDisp, mode);
+    ASSIGN_ADD(P[i].AGS_NgbInt, out->NgbInt, mode);
 #endif
 }
 
@@ -230,6 +244,12 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         out.NV_T[1][2] +=  kernel.wk * kernel.dp[1] * kernel.dp[2];
                         out.NV_T[2][2] +=  kernel.wk * kernel.dp[2] * kernel.dp[2];
 #endif
+
+#ifdef DM_DMB
+                        int k; for (k = 0; k < 3; k++) { out.VelMean[k] += P[j].Vel[k]; }
+                        out.VelDisp += P[j].Vel[0] * P[j].Vel[0] + P[j].Vel[1] * P[j].Vel[1] + P[j].Vel[2] * P[j].Vel[2]; 
+                        out.NgbInt++;
+#endif
                     }
                 }
             }
@@ -281,7 +301,7 @@ void ags_density(void)
         {
             if(ags_density_isactive(i))
             {
-#ifdef DM_FUZZY
+#if defined(DM_FUZZY) || defined(DM_DMB)
                 P[i].AGS_Density = P[i].Mass * PPP[i].NumNgb;
 #endif
                 if(PPP[i].NumNgb > 0)
@@ -548,9 +568,33 @@ void ags_density(void)
                 double h_eff = 2. * (KERNEL_CORE_SIZE*All.ForceSoftening[P[i].Type]); // force softening defines where Jeans pressure needs to kick in; prefactor = NJeans [=2 here]
                 double Prho = 0 * h_eff*h_eff/2.; if(P[i].Particle_DivVel>0) {Prho=-Prho;} // truelove criterion. NJeans[above] , gamma=2 for effective EOS when this dominates, rho=ma*na; h_eff here can be Hsml [P/rho~H^-1] or gravsoft_min to really enforce that, as MIN, with P/rho~H^-3; if-check makes it so this term always adds KE to the system, pumping it up
                 PPPZ[i].AGS_zeta = P[i].Mass*P[i].Mass * PPP[i].DhsmlNgbFactor * ( z0 + Prho ); // force correction, including corrections for adaptive softenings and EOS terms
+#ifdef DM_DMB
+                // compute velocity dispersion
+                int k; double mean_v[3];
+                for (k = 0; k < 3; k++) { mean_v[k] = (P[i].AGS_VelMean[k] + P[i].Vel[k]) / (P[i].AGS_NgbInt + 1); }
+                double meanv_mag2 = mean_v[0]*mean_v[0] + mean_v[1]*mean_v[1] + mean_v[2]*mean_v[2];
+
+                double vel_disp = P[i].AGS_VelDisp;
+                vel_disp += P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2];
+                vel_disp /= (P[i].AGS_NgbInt + 1);
+
+                double new_vel_disp = (1./All.cf_atime) * sqrt(vel_disp - meanv_mag2) / 1.732; // 1d velocity dispersion
+
+                if (isnan(new_vel_disp)) {
+                    printf("AGS_VelDisp is NaN\n");
+                    printf("  veldisp = %.3e\n", vel_disp);
+                    printf("  meanv_mag2 = %.3e\n", meanv_mag2);
+                    printf("  original AGS_VelDisp = %.3e\n", P[i].AGS_VelDisp);
+                }
+
+                P[i].AGS_VelDisp = new_vel_disp;
+#endif
                 PPP[i].NumNgb = pow(PPP[i].NumNgb , 1./NUMDIMS); /* convert NGB to the more useful format, NumNgb^(1/NDIMS), which we can use to obtain the corrected particle sizes */
             } else {
                 PPPZ[i].AGS_zeta = 0; PPP[i].NumNgb = 0; PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type];
+#ifdef DM_DMB
+                P[i].AGS_VelDisp = 0;
+#endif
             }
             apply_pm_hires_region_clipping_selection(i);
         }
@@ -595,7 +639,7 @@ int ags_density_isactive(int i)
 #ifdef DM_SIDM
     if((1 << P[i].Type) & (DM_SIDM)) {default_to_return = 1;}
 #endif
-#if defined(DM_FUZZY) || defined(FLAG_NOT_IN_PUBLIC_CODE)
+#if defined(DM_FUZZY) || defined(FLAG_NOT_IN_PUBLIC_CODE) || defined(DM_DMB)
     if(P[i].Type == 1) {default_to_return = 1;}
 #endif
     if(P[i].TimeBin < 0) {default_to_return = 0;} /* check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */

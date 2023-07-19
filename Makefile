@@ -1315,7 +1315,7 @@ MISC_OBJS = sidm/cbe_integrator.o \
 			sidm/dm_fuzzy.o \
 			sidm/sidm_core.o \
 			dmb/dmb_core.o \
-			dmb/dmb_dm_hsml.o
+			dmb/dmb_hsml.o
 
 ## name of executable and optimizations
 EXEC   = GIZMO
