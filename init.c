@@ -197,14 +197,17 @@ void init(void)
 #endif
 #endif
 
+#ifdef DM_DMB
+    dmb_init();
+#endif
 
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
     {
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] = 0;}
 
-#ifdef DM_DMB
-        if (RestartFlag == 0) { P[i].DMB_InternalEnergy = 0; }
-#endif
+// #ifdef DM_DMB
+//         if (RestartFlag == 0) { P[i].DMB_InternalEnergy = 0; }
+// #endif
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* init tidal tensor for first output (not used for calculation) */
         for(j=0;j<3;j++) {int kt; for(kt=0;kt<3;kt++) {P[i].tidal_tensorps[j][kt]=0;}}
@@ -749,7 +752,7 @@ void init(void)
 #endif
 
 #ifdef DM_DMB
-    if (RestartFlag != 3 && RestartFlag != 5) { dmb_setup_smoothinglengths(); }
+    if(RestartFlag != 3 && RestartFlag != 5) {dmb_setup_smoothinglengths();}
 #endif
 
 #if defined GALSF_SFR_IMF_VARIATION
@@ -1228,7 +1231,7 @@ void dmb_setup_smoothinglengths(void)
     {
         for(i = 0; i < NumPart; i++)
         {
-            if(P[i].Type == 0 || P[i].Type == 1)
+            if(P[i].Type < 2)  // initialize gas and DM
             {
                 no = Father[i];
                 while(10 * 2.0 * 64 * P[i].Mass > Nodes[no].u.d.mass)
@@ -1237,30 +1240,16 @@ void dmb_setup_smoothinglengths(void)
                     if(p < 0) {break;}
                     no = p;
                 }
+                // using disp_density as guide; may need adjustment
                 P[i].DMB_Hsml = pow(1.0/NORM_COEFF * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
-                // TODO: this looks like it's gonna need modified
                 double soft = All.SofteningTable[P[i].Type];
-                if(soft != 0) {if((P[i].DMB_Hsml >1000.*soft)||(PPP[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].DMB_Hsml = soft;}}
-
-                if (PPP[i].Hsml == 0) {
-                    PPP[i].Hsml = soft;
-                }
-
-                if (P[i].DMB_Hsml == 0) {
-                    printf("dmb_setup_smoothinglengths: hsml set to 0\n");
-                    printf("  ..ptype = %d\n", P[i].Type);
-                    printf("  ..mass = %d\n", P[i].Mass);
-                    printf("  ..softening length: %f\n", soft);
-                }
-
-                if (PPP[i].Hsml == 0) {
-                    printf("Warning! PPP.Hsml is 0 for particle %d\n", i);
+                if(soft != 0) {
+                    if((P[i].DMB_Hsml >1000.*soft)||(PPP[i].AGS_Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].DMB_Hsml = soft;}
                 }
             }
         }
     }
-    if(ThisTask == 0) {printf("computing vel_disp around gas and DM particles.\n");}
-    dmb_density();
+    dmb_calc();
 }
 #endif
 

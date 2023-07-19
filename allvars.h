@@ -225,7 +225,7 @@
 #endif
 #endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(FLAG_NOT_IN_PUBLIC_CODE) || defined(DM_FUZZY) || defined(AGS_FACE_CALCULATION_IS_ACTIVE) || defined(DM_SIDM)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(FLAG_NOT_IN_PUBLIC_CODE) || defined(DM_FUZZY) || defined(AGS_FACE_CALCULATION_IS_ACTIVE) || defined(DM_SIDM) || defined(DM_DMB)
 #define AGS_HSML_CALCULATION_IS_ACTIVE
 #endif
 
@@ -2668,22 +2668,22 @@ extern ALIGN(32) struct particle_data
 #endif
 
 #ifdef DM_DMB
-    MyFloat  DMB_Hsml;    /*!< smoothing length to find neighboring particles */
-    int      DMB_NumNgb;  /*!< total number of neighbor DM and gas particles */
+    MyFloat  AGS_Density;    /*!< DM density at DM particle, estimated by AGS */
+    MyFloat  AGS_VelMean[3]; /*!< DM mean velocity at DM particle, estimated by AGS, for computing VelDisp */
+    MyFloat  AGS_VelDisp;    /*!< DM velocity dispersion at DM particle, estimated by AGS */
+    MyFloat  AGS_NgbInt;     /*!< true number of neighbors */
 
-    int      DMB_NumNgbDM;   /*!< number of neighbor DM particles */
-    MyDouble DMB_VDM[3];     /*!< mean velocity of local DM */
-    MyDouble DMB_VelDispDM;  /*!< surrounding velocity and velocity dispersion */
-    MyDouble DMB_DensityDM;  /*!< local density */
+    MyDouble DMB_MyTemp;      /*!< temperature of self */
+    MyDouble DMB_MyMass;      /*!< microparticle mass of gas cell (self) */
 
-    int      DMB_NumNgbGas;             /*!< number of neighboring gas cells */
-    MyDouble DMB_VGas[3];               /*!< mean velocity of local gas */
-    MyDouble DMB_DensityGas;            /*!< local gas density */
-    MyDouble DMB_TemperatureGas;        /*!< mean temperature of local gas */
-    MyDouble DMB_MicroparticleMassGas;  /*!< mean microparticle mass of local gas */
+    MyFloat  DMB_Hsml;        /*!< smoothing length to find neighboring particles */
+    MyDouble DMB_NumNgb;      /*!< number of neighbor DM/gas particles */
+    MyDouble DMB_V[3];        /*!< mean velocity of neighbor DM/gas particles */
+    MyDouble DMB_Density;     /*!< mean density of neighbor DM/gas particles */
+    MyDouble DMB_Temperature; /*!< mean temperature of neighbor DM/gas particles */
+    MyDouble DMB_GasMass;     /*!< mean microparticle mass of local gas */
 
     MyDouble DMB_InternalEnergy; /*!< internal energy of the particle (for tracking only) */
-
     MyDouble DMB_MomExch[3];  /*!< momentum exchange rate */
     MyDouble DMB_HeatExch;    /*!< heat exchange rate */
 #endif
@@ -3585,17 +3585,21 @@ enum iofields
   IO_DELAY_TIME_HII,
   IO_MOLECULARFRACTION,
 
+  IO_DMB_AGS_DENSITY,
+  IO_DMB_AGS_VELMEAN,
+  IO_DMB_AGS_VELDISP,
+  IO_DMB_AGS_NUMNGB,
+
+  IO_DMB_MYTEMP,
+  IO_DMB_MYMASS,
+
   IO_DMB_HSML,
   IO_DMB_NUMNGB,
-  IO_DMB_NUMNGBDM,
-  IO_DMB_VDM,
-  IO_DMB_VELDISPDM,
-  IO_DMB_DENSITYDM,
-  IO_DMB_NUMNGBGAS,
-  IO_DMB_VGAS,
-  IO_DMB_DENSITYGAS,
-  IO_DMB_TEMPERATUREGAS,
-  IO_DMB_MICROPARTICLEMASSGAS,
+  IO_DMB_V,
+  IO_DMB_DENSITY,
+  IO_DMB_TEMPERATURE,
+  IO_DMB_GASMASS,
+
   IO_DMB_INTERNALENERGY,
   IO_DMB_MOMEXCH,
   IO_DMB_HEATEXCH,

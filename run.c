@@ -112,12 +112,6 @@ void run(void)
 #endif
 #endif
 
-#ifdef DM_DMB
-        {
-            dmb_density();
-        }
-#endif
-
         /* flag particles which will be feedback centers, so kernel lengths can be computed for them */
 #ifdef GALSF_FB_MECHANICAL
         determine_where_SNe_occur(); // for mechanical FB models

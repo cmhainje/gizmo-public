@@ -10,7 +10,7 @@
  *
  *  This file contains the functions and routines necesary for the computation of
  *  the momentum and heat exchange between dark matter and baryons due to interactions.
- *  Written by Connor Hainje, connor.hainje@nyu.edu, Dec 2022.
+ *  Written by Connor Hainje, connor.hainje@nyu.edu, 2023.
  */
 
 #ifdef DM_DMB
@@ -129,11 +129,8 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
     double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
     double out = coeff * (B * (kT_B - kT_DM) / (m_DM + m_B) + kT_DM / m_DM * A * dV_mag * dV_mag);
 
-    if (isnan(out) | out == 0.0) {
-        if (isnan(out))
-            printf("heat_exch_rate returning NaN. inputs were:\n");
-        else
-            printf("heat_exch_rate returning zero. inputs were:\n");
+    if (isnan(out)) {
+        printf("heat_exch_rate returning NaN. inputs were:\n");
         printf("  rho_DM = %e\n", rho_DM);
         printf("  kT_DM = %e\n", kT_DM);
         printf("  m_DM = %e\n", m_DM);
@@ -147,190 +144,138 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
 
 
 /*! Computes the temperature of dark matter from its velocity dispersion.
- *  Assumes vel_disp is sigma^2 and is given in physical CGS units.
+ *  Assumes vel_disp is the 1D velocity dispersion and is given in code units.
  *  Returns temperature in ergs (e.g. returns kT).
  */
 double temperature_DM(double vel_disp)
 {
-    return All.DMB_DarkMatterMass * vel_disp;
-    // return All.DMB_DarkMatterMass * vel_disp / 3;
+    double vd = vel_disp * UNIT_VEL_IN_CGS / All.cf_atime; // code -> phys
+    return All.DMB_DarkMatterMass * vd * vd;
 }
 
-/*! Computes exchange rates for a gas particle (DM -> B) and stores them in `out`. */
-void compute_exch_rates_gas(int i, double pdot[3], double* qdot) {
+/*! Computes exchange rates and stores them in `accel` and `dUdt`. */
+void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     int k;
 
-    if (P[i].DMB_NumNgbDM == 0 || P[i].DMB_DensityDM <= 0) {
-        for (k = 0; k < 3; k++) { pdot[k] = 0.0; }
-        *qdot = 0.;
+    // compute dV := v_DM (self) - v_gas (other) in [cgs]
+    double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].Vel[k] - P[i].DMB_V[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
+
+    // densities
+    double rho_DM = P[i].AGS_Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+    double rho_gas = P[i].DMB_Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+
+    // temperatures
+    double kT_DM = P[i].DMB_MyTemp;
+    double kT_gas = P[i].DMB_Temperature;
+
+    // compute momentum, internal energy exchange rates per volume
+    mom_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass, P[i].DMB_MomExch);
+    P[i].DMB_HeatExch = heat_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass);
+
+    // translate exchange rates into accel and d(spec energy)/dt in code units
+    for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_DM) / (UNIT_VEL_IN_CGS * UNIT_TIME_IN_CGS) * All.cf_atime; }
+    *dUdt = (P[i].DMB_HeatExch / rho_DM) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
+}
+
+/*! Computes exchange rates and stores them in `accel` and `dUdt`. */
+void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
+    int k;
+
+    // compute dV := v_DM (other) - v_self (gas) in [cgs]
+    double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].DMB_V[k] - P[i].Vel[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
+
+    // densities
+    double rho_gas = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+    double rho_DM = P[i].DMB_Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+
+    // temperatures
+    double kT_gas = P[i].DMB_MyTemp;
+    double kT_DM = P[i].DMB_Temperature;
+
+    // compute B -> DM momentum, internal energy exchange rates per volume
+    double Pdot_DM[3]; mom_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_MyMass, Pdot_DM);
+    double Qdot_DM = heat_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_MyMass);
+
+    // convert B -> DM into DM -> B
+    for (k = 0; k < 3; k++) { P[i].DMB_MomExch[k] = -1 * Pdot_DM[k]; }
+    P[i].DMB_HeatExch = (
+        P[i].DMB_MomExch[0] * dV[0]
+        + P[i].DMB_MomExch[1] * dV[1]
+        + P[i].DMB_MomExch[2] * dV[2]
+        - Qdot_DM
+    );
+
+    // translate exchange rates into accel and d(spec energy)/dt in code units
+    for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_gas) / (UNIT_VEL_IN_CGS * UNIT_TIME_IN_CGS) * All.cf_atime; }
+    *dUdt = (P[i].DMB_HeatExch / rho_gas) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
+}
+
+/*! Computes exchange rates and stores them in `accel` and `dUdt`. */
+void compute_exch_rates(int i, double accel[3], double *dUdt) {
+    if (P[i].DMB_NumNgb == 0) {
+        int k; for (k = 0; k < 3; k++) { accel[k] = 0.; }
+        *dUdt = 0.;
         return;
     }
 
-    // compute dV := V_DM - V_gas in [cm/s]
-    double dV[3];
-    for (k = 0; k < 3; k++) {
-        dV[k] = (P[i].DMB_VDM[k] - P[i].Vel[k]) / All.cf_atime * UNIT_VEL_IN_CGS;
+    if (P[i].Type == 0) {
+        compute_exch_rates_gas(i, accel, dUdt);
+    } else if (P[i].Type == 1) {
+        compute_exch_rates_DM(i, accel, dUdt);
     }
 
-    // compute densities in [cgs]
-    double rho_B = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+    // int k;
 
-    // compute temperatures in [K]
-    double u_B = SphP[i].InternalEnergyPred;
-    double mu=1, ne=1, nh0=0, nHe0, nHepp, nhp, nHeII; // pull various known thermal properties, prepare to extract others //
-    double kT_B = ThermalProperties(u_B, rho_B, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp) * BOLTZMANN_CGS; // [erg]
+    // if (P[i].DMB_NumNgb == 0) {
+    //     for (k = 0; k < 3; k++) { accel[k] = 0.; }
+    //     *dUdt = 0.;
+    //     return;
+    // }
 
-    double sigma_sq = P[i].DMB_VelDispDM * P[i].DMB_VelDispDM * UNIT_VEL_IN_CGS * UNIT_VEL_IN_CGS; // no co-moving factor; taken care of in hsml loop
-    double kT_DM = temperature_DM(sigma_sq); // [erg]
+    // // compute dV := v_self - v_other in [cgs]
+    // double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].Vel[k] - P[i].DMB_V[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
 
-    // compute 'microparticle' masses in [g]
-    double m_B = mu * PROTONMASS_CGS;  // [g]
-    double m_DM = All.DMB_DarkMatterMass;  // [g]
+    // // densities
+    // double rho_self = ((P[i].Type == 0) ? SphP[i].Density : P[i].AGS_Density) * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+    // double rho_other = P[i].DMB_Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
 
-    // compute Pdot, Qdot
-    double Pdot[3], Qdot;
-    mom_exch_rate(dV, rho_DM, kT_DM, m_DM, rho_B, kT_B, m_B, Pdot);
-    Qdot = heat_exch_rate(dV, rho_DM, kT_DM, m_DM, rho_B, kT_B, m_B);
+    // // temperatures
+    // double kT_self = P[i].DMB_MyTemp;
+    // double kT_other = P[i].DMB_Temperature;
 
-    // nan checks
-    if (isnan(Qdot) || isnan(Pdot[0]) || isnan(Pdot[1]) || isnan(Pdot[2]) ) {
-        printf("compute_exch_rates_gas: NaN in computed exchange rates\n");
-    }
+    // // compute momentum, internal energy exchange rates per volume
+    // if (P[i].Type == 0) {
+    //     mom_exch_rate(dV, rho_other, kT_other, All.DMB_DarkMatterMass, rho_self, kT_self, P[i].DMB_MyMass, P[i].DMB_MomExch);
+    //     P[i].DMB_HeatExch = -1 * heat_exch_rate(dV, rho_other, kT_other, All.DMB_DarkMatterMass, rho_self, kT_self, P[i].DMB_MyMass);
+    // } else {
+    //     mom_exch_rate(dV, rho_self, kT_self, All.DMB_DarkMatterMass, rho_other, kT_other, P[i].DMB_GasMass, P[i].DMB_MomExch);
+    //     P[i].DMB_HeatExch = heat_exch_rate(dV, rho_self, kT_self, All.DMB_DarkMatterMass, rho_other, kT_other, P[i].DMB_GasMass);
+    // }
 
-    // fill output array
-    for (k = 0; k < 3; k++) { pdot[k] = -1 * Pdot[k]; }
-    *qdot = -1 * Qdot;
+    // if (isnan(P[i].DMB_HeatExch)) {
+    //     printf("  type = %d\n", P[i].Type);
+    // }
+
+    // // translate exchange rates into accel and d(spec energy)/dt in code units
+    // for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_self) / (UNIT_VEL_IN_CGS * UNIT_TIME_IN_CGS) * All.cf_atime; }
+    // *dUdt = (P[i].DMB_HeatExch / rho_self) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
 }
 
-void compute_exch_rates_DM(int i, double pdot[3], double* qdot) {
-    int k;
+/*! This function simply initializes some variables to prevent memory errors */
+void dmb_init() {
+    int i; for (i = 0; i < NumPart; i++) {
+        P[i].DMB_Hsml = 0;
+        P[i].DMB_NumNgb = 0;
 
-    if (P[i].DMB_NumNgbGas == 0 || P[i].DMB_DensityGas <= 0) {
-        for (k = 0; k < 3; k++) { pdot[k] = 0.0; }
-        *qdot = 0.;
-        return;
+        P[i].DMB_GasMass = 0;
+
+        P[i].DMB_InternalEnergy = 0;
+        P[i].DMB_HeatExch = 0;
+
+        int k; for (k = 0; k < 3; k++) {
+            P[i].DMB_MomExch[k] = 0;
+        }
     }
-
-    // compute dV := V_DM - V_gas in [cgs]
-    double dV[3];
-    for (k = 0; k < 3; k++) {
-        dV[k] = (P[i].Vel[k] - P[i].DMB_VGas[k]) / All.cf_atime * UNIT_VEL_IN_CGS;
-    }
-
-    // compute densities [cgs]
-    double rho_B = P[i].DMB_DensityGas * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-    double rho_DM = P[i].DMB_DensityDM * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-
-    // compute temperatures [K]
-    double kT_B = P[i].DMB_TemperatureGas * BOLTZMANN_CGS;
-    double sigma_sq = P[i].DMB_VelDispDM * P[i].DMB_VelDispDM * UNIT_VEL_IN_CGS * UNIT_VEL_IN_CGS; // no comoving factor; taken care of in hsml loop
-    double kT_DM = temperature_DM(sigma_sq);
-
-    // compute 'microparticle' masses [cgs]
-    double m_B = P[i].DMB_MicroparticleMassGas * PROTONMASS_CGS;
-    double m_DM = All.DMB_DarkMatterMass;
-
-    // compute Pdot, Qdot
-    double Pdot[3], Qdot;
-    mom_exch_rate(dV, rho_DM, kT_DM, m_DM, rho_B, kT_B, m_B, Pdot);
-    Qdot = heat_exch_rate(dV, rho_DM, kT_DM, m_DM, rho_B, kT_B, m_B);
-
-    // nan checks
-    if (isnan(Qdot) || isnan(Pdot[0]) || isnan(Pdot[1]) || isnan(Pdot[2]) ) {
-        printf("compute_exch_rates_DM: NaN in computed exchange rates\n");
-    }
-
-    // fill output
-    for (k = 0; k < 3; k++) { pdot[k] = Pdot[k]; }
-    *qdot = Qdot;
-}
-
-/*! Computes exchange rates and stores them in `out`. (out = [Pdot_x, Pdot_y, Pdot_z, Qdot]) */
-void compute_exch_rates(int i, double pdot[3], double* qdot)
-{
-    if (P[i].Type == 0) { compute_exch_rates_gas(i, pdot, qdot); }
-    else if (P[i].Type == 1) { compute_exch_rates_DM(i, pdot, qdot); }
-}
-
-void compute_kicks_gas(int i, double v_kick[3], double *q_kick) {
-    int k;
-    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-
-    // velocity kick
-    double v_kick_out[3];
-    if (
-        P[i].DMB_MomExch[0]*P[i].DMB_MomExch[0]
-        + P[i].DMB_MomExch[1]*P[i].DMB_MomExch[1]
-        + P[i].DMB_MomExch[2]*P[i].DMB_MomExch[2] == 0
-    ) {
-        for (k = 0; k < 3; k++) { v_kick_out[k] = 0; }
-    } else {
-        double v_coeff = dt / (P[i].DMB_DensityGas * All.cf_a3inv);
-        double v_units = 1 / UNIT_VEL_IN_CGS / All.cf_atime; // phys -> code
-        for (k = 0; k < 3; k++) { v_kick_out[k] = v_coeff * P[i].DMB_MomExch[k] * v_units; }
-    }
-
-    // heat kick
-    double q_kick_out;
-    if (P[i].DMB_HeatExch == 0) {
-        q_kick_out = 0;
-    } else {
-        double q_coeff = dt * P[i].Mass / (SphP[i].Density * All.cf_a3inv);
-        double q_units = 1 / UNIT_ENERGY_IN_CGS; // phys -> code
-        q_kick_out = q_coeff * P[i].DMB_HeatExch * q_units;
-    }
-
-    // nan checks
-    if (isnan(q_kick_out) || isnan(v_kick_out[0]) || isnan(v_kick_out[1]) || isnan(v_kick_out[2]) ) {
-        printf("compute_kicks_gas: NaN in computed kicks\n");
-    }
-
-    // write output
-    for (k = 0; k < 3; k++) { v_kick[k] = v_kick_out[k]; }
-    *q_kick = q_kick_out;
-}
-
-void compute_kicks_DM(int i, double v_kick[3], double *q_kick) {
-    int k;
-    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-
-    // velocity kick
-    double v_coeff = dt / (P[i].DMB_DensityDM * All.cf_a3inv);
-    double v_units = 1 / UNIT_VEL_IN_CGS / All.cf_atime; // phys -> code
-    double v_kick_out[3];
-    for (k = 0; k < 3; k++) { v_kick_out[k] = v_coeff * P[i].DMB_MomExch[k] * v_units; }
-
-    // heat kick
-    // double q_kick_out = 0;  // not tracking DM internal energy at present
-    double q_coeff = dt * P[i].Mass / (P[i].DMB_DensityDM * All.cf_a3inv);
-    double q_units = 1 / UNIT_ENERGY_IN_CGS; // phys -> code
-    double q_kick_out = q_coeff * P[i].DMB_HeatExch * q_units;
-
-    // nan checks
-    if (isnan(q_kick_out) || isnan(v_kick_out[0]) || isnan(v_kick_out[1]) || isnan(v_kick_out[2]) ) {
-        printf("compute_kicks_DM: NaN in computed kicks\n");
-        printf("  ..DMB_DensityDM %f\n", P[i].DMB_DensityDM);
-        printf("  ..DMB_MomExch [%f, %f, %f]\n", P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2]);
-        printf("  ..DMB_HeatExch %f\n", P[i].DMB_HeatExch);
-    }
-
-    // write output
-    for (k = 0; k < 3; k++) { v_kick[k] = v_kick_out[k]; }
-    *q_kick = q_kick_out;
-}
-
-/*! Computes the velocity and internal energy kicks for particle i.
- *  The momentum and heat exchange rates are per unit time and unit volume
- *  The velocity kick is thus:
- *    dV := MomExchRate / M * dt * vol = MomExchRate * dt / density
- *  The energy kick is thus:
- *    dQ := HeatExchRate * dt * vol,    vol estimated by (M / density)
- *  The kicks returned are in code units.
- */
-void compute_kicks(int i, double v_kick[3], double *q_kick) {
-    if (P[i].Type == 0) { compute_kicks_gas(i, v_kick, q_kick); }
-    else if (P[i].Type == 1) { compute_kicks_DM(i, v_kick, q_kick); }
 }
 
 #endif
