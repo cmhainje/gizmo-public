@@ -2525,7 +2525,7 @@ extern ALIGN(32) struct particle_data
     MyFloat  AGS_Density;    /*!< DM density at DM particle, estimated by AGS */
     MyFloat  AGS_VelMean[3]; /*!< DM mean velocity at DM particle, estimated by AGS, for computing VelDisp */
     MyFloat  AGS_VelDisp;    /*!< DM velocity dispersion at DM particle, estimated by AGS */
-    MyFloat  AGS_NgbInt;     /*!< true number of neighbors */
+    int AGS_NgbInt;         /*!< true number of neighbors */
 
     MyDouble DMB_MyTemp;      /*!< temperature of self */
     MyDouble DMB_MyMass;      /*!< microparticle mass of gas cell (self) */
