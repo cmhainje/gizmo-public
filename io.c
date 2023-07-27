@@ -1802,7 +1802,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #ifdef DM_DMB
             for(n = 0; n < pc; pindex++) {
                 if(P[pindex].Type == type) {
-                    *fp++ = (int) P[pindex].AGS_NgbInt;
+                    *ip_int++ = (int) P[pindex].AGS_NgbInt;
                     n++;
                 }
             }

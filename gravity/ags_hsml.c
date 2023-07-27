@@ -116,7 +116,7 @@ static struct OUTPUT_STRUCT_NAME
     MyLongDouble NV_T[3][3];
 #endif
 #ifdef DM_DMB
-    MyLongDouble NgbInt;
+    int NgbInt;
     MyLongDouble VelMean[3];
     MyLongDouble VelDisp;
 #endif
