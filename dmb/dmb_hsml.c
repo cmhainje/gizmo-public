@@ -182,8 +182,13 @@ void dmb_calc(void)
         {
             if(dmb_isactive(i))
             {
+                double self_hsml = (P[i].Type == 0 ? PPP[i].Hsml : PPP[i].AGS_Hsml);
                 redo_particle = 0; /* now check whether we have enough neighbours, and are below the maximum search radius */
-                double maxsoft = DMIN(All.MaxHsml, 10.0*PPP[i].AGS_Hsml);
+                double maxsoft = DMIN(All.MaxHsml, self_hsml);
+
+                // if (P[i].Type == 0 && P[i].DMB_NumNgb == 0) {
+                //     printf("particle %d, Hsml %f, numngb %.0f, maxsoft: %f\n", i, (double) P[i].DMB_Hsml, (double) P[i].DMB_NumNgb, maxsoft);
+                // }
 
                 if(((P[i].DMB_NumNgb < desnumngb - desnumngbdev) || (P[i].DMB_NumNgb > (desnumngb + desnumngbdev)))
                    && (Right[i]-Left[i] > 0.001*Left[i] || Left[i]==0 || Right[i]==0))
@@ -192,8 +197,15 @@ void dmb_calc(void)
                 }
                 if(P[i].DMB_Hsml >= maxsoft)
                 {
-                    P[i].DMB_Hsml = maxsoft;
-                    redo_particle = 0;
+                    if (P[i].DMB_NumNgb > desnumngb + desnumngbdev) {
+                        /* if we're seeing too many neighbors, try again */
+                        P[i].DMB_Hsml = 0.5 * self_hsml;
+                        redo_particle = 1;
+                    } else {
+                        /* if we're not seeing too many neighbors, give up -> not enough neighbors around */
+                        P[i].DMB_Hsml = maxsoft;
+                        redo_particle = 0;
+                    }
                 }
 
                 if(redo_particle)

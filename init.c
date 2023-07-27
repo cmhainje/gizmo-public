@@ -1233,6 +1233,14 @@ void dmb_setup_smoothinglengths(void)
         {
             if(P[i].Type < 2)  // initialize gas and DM
             {
+                // just start with like 2x the AGS Hsml
+                P[i].DMB_Hsml = 2. * PPP[i].AGS_Hsml;
+                double soft = All.SofteningTable[P[i].Type];
+                if(soft != 0) {
+                    if( (P[i].DMB_Hsml > 1.e6*soft)||(PPP[i].AGS_Hsml<=1.e-3*soft) ) { P[i].DMB_Hsml = soft; }
+                }
+
+                /*
                 no = Father[i];
                 while(10 * 2.0 * 64 * P[i].Mass > Nodes[no].u.d.mass)
                 {
@@ -1246,7 +1254,9 @@ void dmb_setup_smoothinglengths(void)
                 if(soft != 0) {
                     if((P[i].DMB_Hsml >1000.*soft)||(PPP[i].AGS_Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].DMB_Hsml = soft;}
                 }
+                */
             }
+            else { P[i].DMB_Hsml = 0.; }
         }
     }
     dmb_calc();
