@@ -173,7 +173,7 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     P[i].DMB_HeatExch = heat_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass);
 
     // translate exchange rates into accel and d(spec energy)/dt in code units
-    for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_DM) / (UNIT_VEL_IN_CGS * UNIT_TIME_IN_CGS) * All.cf_atime; }
+    for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_DM) / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS) * All.cf_atime; }
     *dUdt = (P[i].DMB_HeatExch / rho_DM) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
 }
 
@@ -206,7 +206,7 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
     );
 
     // translate exchange rates into accel and d(spec energy)/dt in code units
-    for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_gas) / (UNIT_VEL_IN_CGS * UNIT_TIME_IN_CGS) * All.cf_atime; }
+    for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_gas) / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS) * All.cf_atime; }
     *dUdt = (P[i].DMB_HeatExch / rho_gas) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
 }
 
