@@ -1235,7 +1235,7 @@ void dmb_setup_smoothinglengths(void)
             {
                 // just start with like 2x the AGS Hsml
                 P[i].DMB_Hsml = 2. * PPP[i].AGS_Hsml;
-                double soft = All.SofteningTable[P[i].Type];
+                double soft = All.ForceSoftening[P[i].Type];
                 if(soft != 0) {
                     if( (P[i].DMB_Hsml > 1.e6*soft)||(PPP[i].AGS_Hsml<=1.e-3*soft) ) { P[i].DMB_Hsml = soft; }
                 }
