@@ -179,6 +179,7 @@ void init(void)
     init_self_interactions();
 #endif
 
+<<<<<<< HEAD
 #ifdef METALS
     for(j=0;j<NUM_METAL_SPECIES;j++) {All.SolarAbundances[j]=0;} // initialize all to zero
     All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
@@ -197,6 +198,8 @@ void init(void)
 #endif
 #endif
 
+=======
+>>>>>>> fc36f2cc06dd43babc4983db26d9f313eeb5a4e5
 #ifdef DM_DMB
     dmb_init();
 #endif
