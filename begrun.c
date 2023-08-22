@@ -220,7 +220,7 @@ void begrun(void)
     init_turb();
 #endif
 
-#if defined(DM_SIDM)
+#if defined(DM_SIDM) || defined(DM_DMB)
     init_geofactor_table();
 #endif
 

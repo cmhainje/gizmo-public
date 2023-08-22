@@ -949,13 +949,16 @@ void *DynamicDiff_evaluate_secondary(void *p, int dynamic_iteration);
 void apply_excision();
 #endif
 
-#ifdef DM_SIDM
-double prob_of_interaction(double mass, double r, double h_si, double dV[3], double dt);
+#if defined(DM_SIDM) || defined(DM_DMB)
 double g_geo(double r);
-void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
+#endif
+
+#ifdef DM_SIDM
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], double dt);
+void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_self_interactions();
 #ifdef GRAIN_COLLISIONS
 double return_grain_cross_section_per_unit_mass(int i);
