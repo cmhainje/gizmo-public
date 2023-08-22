@@ -60,6 +60,10 @@ int FirstActiveParticle;
 int *NextActiveParticle;
 unsigned char *ProcessedFlag;
 
+#ifdef DM_DMB
+double DMBMaxGasHsml;
+#endif
+
 int TimeBinCount[TIMEBINS];
 int TimeBinCountGas[TIMEBINS];
 int TimeBinActive[TIMEBINS];
@@ -365,6 +369,6 @@ int maxThreads = 1;
 #endif
 
 
-#if defined(DM_SIDM)
+#if defined(DM_SIDM) || defined(DM_DMB)
 MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif

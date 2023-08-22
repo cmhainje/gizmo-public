@@ -1534,6 +1534,11 @@ extern int FirstInTimeBin[TIMEBINS];
 extern int LastInTimeBin[TIMEBINS];
 extern int *NextInTimeBin;
 extern int *PrevInTimeBin;
+
+#ifdef DM_DMB
+extern double DMBMaxGasHsml;
+#endif
+
 #ifdef GALSF
 extern double TimeBinSfr[TIMEBINS];
 #endif
@@ -2536,6 +2541,7 @@ extern ALIGN(32) struct particle_data
     MyDouble DMB_Density;     /*!< mean density of neighbor DM/gas particles */
     MyDouble DMB_Temperature; /*!< mean temperature of neighbor DM/gas particles */
     MyDouble DMB_GasMass;     /*!< mean microparticle mass of local gas */
+    int      DMB_NgbInt;
 
     MyDouble DMB_InternalEnergy; /*!< internal energy of the particle (for tracking only) */
     MyDouble DMB_MomExch[3];  /*!< momentum exchange rate */
@@ -3578,7 +3584,7 @@ extern gsl_rng* StRng; // random number generator key
 
 
 
-#if defined(DM_SIDM)
+#if defined(DM_SIDM) || defined(DM_DMB)
 #define GEOFACTOR_TABLE_LENGTH 1000    /*!< length of the table used for the geometric factor spline */
 extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif

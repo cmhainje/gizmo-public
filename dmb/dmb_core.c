@@ -175,6 +175,46 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     // translate exchange rates into accel and d(spec energy)/dt in code units
     for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_DM) / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS) * All.cf_atime; }
     *dUdt = (P[i].DMB_HeatExch / rho_DM) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
+
+    if (P[i].ID == 70462) {
+        printf(
+            "Update on ID 70462:\n"
+            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
+            "  AGS_Hsml=%.3e, AGS_NumNgb=%d, rho=%.3e, kT=%.3e\n"
+            "  DMB_NumNgb=%.3e, DMB_NgbInt=%d, rho_gas=%.3e, kT_gas=%.3e\n"
+            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
+            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            P[i].AGS_Hsml, P[i].AGS_NgbInt, rho_DM, kT_DM,
+            P[i].DMB_NumNgb, P[i].DMB_NgbInt, rho_gas, kT_gas,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
+            accel[0], accel[1], accel[2], *dUdt
+        );
+    }
+
+    // check for NaNs
+    bool nan_detected = isnan(*dUdt);
+    for (k = 0; k < 3; k++) { nan_detected = nan_detected || isnan(accel[k]); }
+    if (nan_detected) {
+        printf("compute_exch_rates_DM returning NaN. inputs were:\n");
+        printf("  index %d, ID %d\n", i, P[i].ID);
+        printf("  xyz        = [%f, %f, %f]\n", P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+        printf("  v_DM       = [%f, %f, %f]\n", P[i].Vel[0], P[i].Vel[1], P[i].Vel[2]);
+        printf("  v_gas      = [%f, %f, %f]\n", P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2]);
+        printf("  dV         = [%f, %f, %f]\n", dV[0], dV[1], dV[2]);
+        printf("  rho_DM     = %e\n", rho_DM);
+        printf("  rho_gas    = %e\n", rho_gas);
+        printf("  kT_DM      = %e\n", kT_DM);
+        printf("  kT_gas     = %e\n", kT_gas);
+        printf("  m_DM       = %e\n", All.DMB_DarkMatterMass);
+        printf("  m_gas      = %e\n", P[i].DMB_GasMass);
+        printf("  DMB_Hsml   = %e\n", P[i].DMB_Hsml);
+        printf("  DMB_NumNgb = %e\n", P[i].DMB_NumNgb);
+        printf("  mom_exch   = [%e, %e, %e]\n", P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2]);
+        printf("  heat_exch  = %e\n", P[i].DMB_HeatExch);
+        printf("  accel      = [%e, %e, %e]\n", accel[0], accel[1], accel[2]);
+        printf("  dUdt       = %e\n", *dUdt);
+    }
 }
 
 /*! Computes exchange rates and stores them in `accel` and `dUdt`. */
@@ -208,57 +248,46 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
     // translate exchange rates into accel and d(spec energy)/dt in code units
     for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_gas) / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS) * All.cf_atime; }
     *dUdt = (P[i].DMB_HeatExch / rho_gas) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
+
+    // check for NaNs
+    bool nan_detected = isnan(*dUdt);
+    for (k = 0; k < 3; k++) { nan_detected = nan_detected || isnan(accel[k]); }
+    if (nan_detected) {
+        printf("compute_exch_rates_gas returning NaN. inputs were:\n");
+        printf("  index %d\n", i);
+        printf("  xyz          = [%f, %f, %f]\n", P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+        printf("  v_DM         = [%f, %f, %f]\n", P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2]);
+        printf("  v_gas        = [%f, %f, %f]\n", P[i].Vel[0], P[i].Vel[1], P[i].Vel[2]);
+        printf("  dV           = [%f, %f, %f]\n", dV[0], dV[1], dV[2]);
+        printf("  rho_DM       = %e\n", rho_DM);
+        printf("  rho_gas      = %e\n", rho_gas);
+        printf("  kT_DM        = %e\n", kT_DM);
+        printf("  kT_gas       = %e\n", kT_gas);
+        printf("  m_DM         = %e\n", All.DMB_DarkMatterMass);
+        printf("  m_gas        = %e\n", P[i].DMB_MyMass);
+        printf("  DMB_Hsml     = %e\n", P[i].DMB_Hsml);
+        printf("  DMB_NumNgb   = %e\n", P[i].DMB_NumNgb);
+        printf("  mom_exch_DM  = [%e, %e, %e]\n", Pdot_DM[0], Pdot_DM[1], Pdot_DM[2]);
+        printf("  heat_exch_DM = %e\n", Qdot_DM);
+        printf("  mom_exch     = [%e, %e, %e]\n", P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2]);
+        printf("  heat_exch    = %e\n", P[i].DMB_HeatExch);
+        printf("  accel        = [%e, %e, %e]\n", accel[0], accel[1], accel[2]);
+        printf("  dUdt         = %e\n", *dUdt);
+    }
 }
 
 /*! Computes exchange rates and stores them in `accel` and `dUdt`. */
 void compute_exch_rates(int i, double accel[3], double *dUdt) {
-    if (P[i].DMB_NumNgb == 0) {
+    if (P[i].DMB_NgbInt == 0) {
         int k; for (k = 0; k < 3; k++) { accel[k] = 0.; }
         *dUdt = 0.;
         return;
     }
 
-    if (P[i].Type == 0) {
+    if (P[i].Type == 0)
         compute_exch_rates_gas(i, accel, dUdt);
-    } else if (P[i].Type == 1) {
+    else if (P[i].Type == 1)
         compute_exch_rates_DM(i, accel, dUdt);
-    }
-
-    // int k;
-
-    // if (P[i].DMB_NumNgb == 0) {
-    //     for (k = 0; k < 3; k++) { accel[k] = 0.; }
-    //     *dUdt = 0.;
-    //     return;
-    // }
-
-    // // compute dV := v_self - v_other in [cgs]
-    // double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].Vel[k] - P[i].DMB_V[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
-
-    // // densities
-    // double rho_self = ((P[i].Type == 0) ? SphP[i].Density : P[i].AGS_Density) * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-    // double rho_other = P[i].DMB_Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-
-    // // temperatures
-    // double kT_self = P[i].DMB_MyTemp;
-    // double kT_other = P[i].DMB_Temperature;
-
-    // // compute momentum, internal energy exchange rates per volume
-    // if (P[i].Type == 0) {
-    //     mom_exch_rate(dV, rho_other, kT_other, All.DMB_DarkMatterMass, rho_self, kT_self, P[i].DMB_MyMass, P[i].DMB_MomExch);
-    //     P[i].DMB_HeatExch = -1 * heat_exch_rate(dV, rho_other, kT_other, All.DMB_DarkMatterMass, rho_self, kT_self, P[i].DMB_MyMass);
-    // } else {
-    //     mom_exch_rate(dV, rho_self, kT_self, All.DMB_DarkMatterMass, rho_other, kT_other, P[i].DMB_GasMass, P[i].DMB_MomExch);
-    //     P[i].DMB_HeatExch = heat_exch_rate(dV, rho_self, kT_self, All.DMB_DarkMatterMass, rho_other, kT_other, P[i].DMB_GasMass);
-    // }
-
-    // if (isnan(P[i].DMB_HeatExch)) {
-    //     printf("  type = %d\n", P[i].Type);
-    // }
-
-    // // translate exchange rates into accel and d(spec energy)/dt in code units
-    // for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_self) / (UNIT_VEL_IN_CGS * UNIT_TIME_IN_CGS) * All.cf_atime; }
-    // *dUdt = (P[i].DMB_HeatExch / rho_self) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
 }
 
 /*! This function simply initializes some variables to prevent memory errors */
@@ -266,6 +295,7 @@ void dmb_init() {
     int i; for (i = 0; i < NumPart; i++) {
         P[i].DMB_Hsml = 0;
         P[i].DMB_NumNgb = 0;
+        P[i].DMB_NgbInt = 0;
 
         P[i].DMB_GasMass = 0;
 
