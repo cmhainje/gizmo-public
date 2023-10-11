@@ -1835,7 +1835,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #ifdef DM_DMB
             for(n = 0; n < pc; pindex++) {
                 if(P[pindex].Type == type) {
-                    *fp++ = (MyOutputFloat) P[pindex].DMB_Hsml;
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_NumNgb;
                     n++;
                 }
             }
@@ -1846,7 +1846,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #ifdef DM_DMB
             for(n = 0; n < pc; pindex++) {
                 if(P[pindex].Type == type) {
-                    *ip_int++ = (int) P[pindex].DMB_NumNgb;
+                    *ip_int++ = (int) P[pindex].DMB_NgbInt;
                     n++;
                 }
             }
@@ -1930,6 +1930,28 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++) {
                 if(P[pindex].Type == type) {
                     *fp++ = (MyOutputFloat) P[pindex].DMB_HeatExch;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_MOMEXCHED:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_MomentumExchanged;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_HEATEXCHED:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    *fp++ = (MyOutputFloat) P[pindex].DMB_EnergyExchanged;
                     n++;
                 }
             }
@@ -2099,6 +2121,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_DMB_GASMASS:
         case IO_DMB_INTERNALENERGY:
         case IO_DMB_HEATEXCH:
+        case IO_DMB_MOMEXCHED:
+        case IO_DMB_HEATEXCHED:
             if(mode)
                 bytes_per_blockelement = sizeof(MyInputFloat);
             else
@@ -2426,6 +2450,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_DMB_GASMASS:
         case IO_DMB_INTERNALENERGY:
         case IO_DMB_HEATEXCH:
+        case IO_DMB_MOMEXCHED:
+        case IO_DMB_HEATEXCHED:
         case IO_DMB_AGS_NUMNGB:
         case IO_DMB_NUMNGB:
             values = 1;
@@ -2778,6 +2804,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_DMB_INTERNALENERGY:
         case IO_DMB_MOMEXCH:
         case IO_DMB_HEATEXCH:
+        case IO_DMB_MOMEXCHED:
+        case IO_DMB_HEATEXCHED:
             for(i = 0; i < 6; i++) {
                 if (i < 2 && ngas > 0 && header.npart[1] > 0) {
                     typelist[i] = 1;
@@ -3408,6 +3436,8 @@ int blockpresent(enum iofields blocknr)
         case IO_DMB_INTERNALENERGY:
         case IO_DMB_MOMEXCH:
         case IO_DMB_HEATEXCH:
+        case IO_DMB_MOMEXCHED:
+        case IO_DMB_HEATEXCHED:
 #ifdef DM_DMB
             return 1;
 #endif
@@ -3869,6 +3899,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_DMB_HEATEXCH:
             strncpy(label, "dbHX", 4);
             break;
+        case IO_DMB_MOMEXCHED:
+            strncpy(label, "dbMT", 4);
+            break;
+        case IO_DMB_HEATEXCHED:
+            strncpy(label, "dbHT", 4);
+            break;
 
         case IO_LASTENTRY:
             endrun(217);
@@ -4296,10 +4332,10 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "DMB_MyMass");
             break;
         case IO_DMB_HSML:
-            strcpy(buf, "DMB_Hsml");
+            strcpy(buf, "DMB_NgbKernel");
             break;
         case IO_DMB_NUMNGB:
-            strcpy(buf, "DMB_NumNgb");
+            strcpy(buf, "DMB_NgbInt");
             break;
         case IO_DMB_V:
             strcpy(buf, "DMB_V");
@@ -4321,6 +4357,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_DMB_HEATEXCH:
             strcpy(buf, "DMB_HeatExch");
+            break;
+        case IO_DMB_MOMEXCHED:
+            strcpy(buf, "DMB_MomExchanged");
+            break;
+        case IO_DMB_HEATEXCHED:
+            strcpy(buf, "DMB_HeatExchanged");
             break;
         case IO_LASTENTRY:
             endrun(218);
@@ -5021,6 +5063,8 @@ void write_header_attributes_in_hdf5(hid_t handle)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "DMB_DarkMatterMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.DMB_DarkMatterMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "RandomSeed", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &All.RandomSeed); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 
 #ifdef GALSF_SUBGRID_WINDS
     {int holder=GALSF_SUBGRID_WIND_SCALING; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SubGrid_Wind_Model_Scaling_Key", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);

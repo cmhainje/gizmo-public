@@ -231,20 +231,30 @@ void dmb_calc(void)
     DMBMaxGasHsml = 0.0;
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         if (dmb_isactive(i) | dmb_isactive_gas(i)) {
+            P[i].DMB_NgbInt = 0;
             P[i].DMB_NumNgb = 0;
+            P[i].DMB_Density = 0;
+            P[i].DMB_Temperature = 0;
+            int k; for (k = 0; k < 3; k++) { P[i].DMB_V[k] = 0; }
 
             // compute temperatures once per particle
             if (P[i].Type == 0) {
-                double rho = SphP[i].Density * All.cf_a3inv;
                 double u = SphP[i].InternalEnergyPred;
+#ifdef COOLING
+                double rho = SphP[i].Density * All.cf_a3inv;
                 double mu=1, ne=1, nh0=0, nHe0, nHepp, nhp, nHeII;
                 double T = ThermalProperties(u, rho, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp) * BOLTZMANN_CGS;
                 P[i].DMB_MyTemp = T;
                 P[i].DMB_MyMass = mu * PROTONMASS_CGS;
+#else
+                P[i].DMB_MyMass = PROTONMASS_CGS;
+                P[i].DMB_MyTemp = u * (2/3) * U_TO_TEMP_UNITS * BOLTZMANN_CGS;
+#endif
 
                 DMBMaxGasHsml = DMAX(DMBMaxGasHsml, PPP[i].Hsml);
             }
             else if (P[i].Type == 1) {
+                P[i].DMB_GasMass = 0;
                 P[i].DMB_MyTemp = temperature_DM(P[i].AGS_VelDisp);
                 if (isnan(P[i].DMB_MyTemp)) {
                     printf("DM temperature is nan\n");
@@ -277,10 +287,13 @@ void dmb_calc(void)
             }
 
             // now all the ingredients are known -> compute and apply exchange rates!
-            double acc[3], dUdt; compute_exch_rates(i, acc, &dUdt);
-            int k; for (k = 0; k < 3; k++) { P[i].GravAccel[k] += acc[k]; }
-            if (P[i].Type == 0) { SphP[i].DtInternalEnergy += dUdt; }
-            else                { P[i].DMB_InternalEnergy += dUdt; }
+            compute_exch_rates(i);
+            int k; for (k = 0; k < 3; k++) {
+                P[i].GravAccel[k] += P[i].DMB_Accel[k];
+            }
+            if (P[i].Type == 0) {
+                SphP[i].DtInternalEnergy += P[i].DMB_DtInternalEnergy;
+            }
         }
     }
 

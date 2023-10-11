@@ -414,7 +414,12 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #ifdef DM_FUZZY
         do_dm_fuzzy_drift_kick(i, dt_entr, 0); /* kicks for fuzzy-dm integration */
 #endif
-        
+#ifdef DM_DMB
+        /* no actual kicks here; just tracking contribution to kicks from DMB interactions */
+        double dp_dmb[3]; int k; for (k = 0; k < 3; k++) { dp_dmb[k] = P[i].Mass * P[i].DMB_Accel[k] * dt_gravkick; }
+        P[i].DMB_MomentumExchanged += sqrt(dp_dmb[0]*dp_dmb[0] + dp_dmb[1]*dp_dmb[1] + dp_dmb[2]*dp_dmb[2]);
+        P[i].DMB_EnergyExchanged += P[i].DMB_DtInternalEnergy * dt_entr;
+#endif
     } // if(TimeBinActive[P[i].TimeBin]) //
 }
 

@@ -1862,6 +1862,7 @@ extern struct global_data_all_processes
     MyDouble DMB_DarkMatterMass;           /*!< mass of the microscopic dark matter particles in [g] */
     int DMB_InteractionPowerScale;         /*!< relative velocity is raised to this power to compute cross section */
 #endif
+    int RandomSeed;                        /*!< control the GIZMO random seed for testing */
 
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
   int MaxPartGas;		/*!< This gives the maxmimum number of gas cells that can be stored on one processor. */
@@ -2692,6 +2693,12 @@ extern ALIGN(32) struct particle_data
     MyDouble DMB_InternalEnergy; /*!< internal energy of the particle (for tracking only) */
     MyDouble DMB_MomExch[3];  /*!< momentum exchange rate */
     MyDouble DMB_HeatExch;    /*!< heat exchange rate */
+
+    MyDouble DMB_Accel[3]; /*!< acceleration */
+    MyDouble DMB_DtInternalEnergy; /*!< rate of change of internal energy */
+
+    MyDouble DMB_MomentumExchanged; /*!< cumulative momentum exchanged */
+    MyDouble DMB_EnergyExchanged;   /*!< cumulative energy exchanged */
 #endif
 
 #if defined(SUBFIND)
@@ -3609,6 +3616,9 @@ enum iofields
   IO_DMB_INTERNALENERGY,
   IO_DMB_MOMEXCH,
   IO_DMB_HEATEXCH,
+
+  IO_DMB_MOMEXCHED,
+  IO_DMB_HEATEXCHED,
 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };

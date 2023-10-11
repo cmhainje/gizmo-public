@@ -190,7 +190,7 @@ void begrun(void)
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
 
-  gsl_rng_set(random_generator, 42 + ThisTask);	/* start-up seed */
+  gsl_rng_set(random_generator, All.RandomSeed + ThisTask);	/* start-up seed */
 
   set_random_numbers();
 
@@ -1208,7 +1208,11 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "DMB_DarkMatterMass");
         addr[nt] = &All.DMB_DarkMatterMass;
         id[nt++] = REAL;
+
 #endif
+        strcpy(tag[nt], "RandomSeed");
+        addr[nt] = &All.RandomSeed;
+        id[nt++] = INT;
 
 
         strcpy(tag[nt], "MinGasHsmlFractional");

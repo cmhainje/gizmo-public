@@ -189,10 +189,11 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Mass <= 0) continue;
-                
+
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
+
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); // find the closest image in the given box size
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 if(r2 < h2)
@@ -574,15 +575,15 @@ void ags_density(void)
                 PPPZ[i].AGS_zeta = P[i].Mass*P[i].Mass * PPP[i].DhsmlNgbFactor * ( z0 + Prho ); // force correction, including corrections for adaptive softenings and EOS terms
 #ifdef DM_DMB
                 // compute velocity dispersion
-                int k; double mean_v[3];
-                for (k = 0; k < 3; k++) { mean_v[k] = (P[i].AGS_VelMean[k] + P[i].Vel[k]) / (P[i].AGS_NgbInt + 1); }
-                double meanv_mag2 = mean_v[0]*mean_v[0] + mean_v[1]*mean_v[1] + mean_v[2]*mean_v[2];
-
-                double vel_disp = P[i].AGS_VelDisp;
-                vel_disp += P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2];
-                vel_disp /= (P[i].AGS_NgbInt + 1);
+                int k;
+                for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NgbInt; }
+                double meanv_mag2 = P[i].AGS_VelMean[0]*P[i].AGS_VelMean[0] + P[i].AGS_VelMean[1]*P[i].AGS_VelMean[1] + P[i].AGS_VelMean[2]*P[i].AGS_VelMean[2];
+                double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NgbInt;
 
                 double new_vel_disp = (1./All.cf_atime) * sqrt(vel_disp - meanv_mag2) / 1.732; // 1d velocity dispersion
+                if ((vel_disp - meanv_mag2) <= 0 && fabs((vel_disp - meanv_mag2) / vel_disp) < 1e-5) {
+                    new_vel_disp = 0.0; // handle the case where this is only negative bc of floating point problems
+                }
 
                 if (isnan(new_vel_disp)) {
                     printf("AGS_VelDisp is NaN\n");

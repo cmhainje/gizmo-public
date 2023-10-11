@@ -35,7 +35,7 @@ double cross_section(double velocity)
 double script_A(double w, double kT_over_m)
 {
     // asymptotic limit, eq. 34
-    if (w * w / kT_over_m > HYPERG_ASYMP_FACTOR) { return w * cross_section(w); }
+    if (w * w > HYPERG_ASYMP_FACTOR * kT_over_m) { return w * cross_section(w); }
 
     int n = All.DMB_InteractionPowerScale;
     double alpha = gsl_sf_hyperg_1F1(-0.5 * (n + 1), 2.5, -0.5 * w * w / kT_over_m);
@@ -60,7 +60,7 @@ double script_A(double w, double kT_over_m)
 double script_B(double w, double kT_over_m)
 {
     // asymptotic limit, eq. 34
-    if (w * w / kT_over_m > HYPERG_ASYMP_FACTOR) { return w * w * w * cross_section(w); }
+    if (w * w > HYPERG_ASYMP_FACTOR * kT_over_m) { return w * w * w * cross_section(w); }
 
     int n = All.DMB_InteractionPowerScale;
     double beta = gsl_sf_hyperg_1F1(-0.5 * (n + 3), 1.5, -0.5 * w * w / kT_over_m);
@@ -113,7 +113,7 @@ void mom_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, doubl
  *  dV is the dark matter velocity minus the baryon velocity (in that order)
  *  rho_DM, kT_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
  *  rho_B, kT_B, m_B are the same for baryonic matter
- * 
+ *
  *  Units:
  *    dV: velocity, physical, cgs (cm/s)
  *    rho_*: density, physical, cgs
@@ -128,6 +128,7 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
     double B = script_B(dV_mag, v_th_2);
     double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
     double out = coeff * (B * (kT_B - kT_DM) / (m_DM + m_B) + kT_DM / m_DM * A * dV_mag * dV_mag);
+    if (v_th_2 == 0) out = 0;
 
     if (isnan(out)) {
         printf("heat_exch_rate returning NaN. inputs were:\n");
@@ -178,19 +179,39 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
 
     if (P[i].ID == 70462) {
         printf(
-            "Update on ID 70462:\n"
+            "Update on ID %d:\n"
             "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
             "  AGS_Hsml=%.3e, AGS_NumNgb=%d, rho=%.3e, kT=%.3e\n"
-            "  DMB_NumNgb=%.3e, DMB_NgbInt=%d, rho_gas=%.3e, kT_gas=%.3e\n"
+            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_gas=%.3e, kT_gas=%.3e\n"
             "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
             "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
+            P[i].ID,
             P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
             P[i].AGS_Hsml, P[i].AGS_NgbInt, rho_DM, kT_DM,
-            P[i].DMB_NumNgb, P[i].DMB_NgbInt, rho_gas, kT_gas,
+            P[i].DMB_NgbInt, P[i].DMB_NumNgb, rho_gas, kT_gas,
             P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
             accel[0], accel[1], accel[2], *dUdt
         );
     }
+
+    double accel_mag = sqrt(accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2]);
+    if (accel_mag > 1e10) {
+        printf(
+            "Crazy acceleration on ID %d (type %d):\n"
+            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
+            "  AGS_Hsml=%.3e, AGS_NumNgb=%d, rho=%.3e, kT=%.3e\n"
+            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_gas=%.3e, kT_gas=%.3e\n"
+            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
+            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
+            P[i].ID, P[i].Type,
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            P[i].AGS_Hsml, P[i].AGS_NgbInt, rho_DM, kT_DM,
+            P[i].DMB_NgbInt, P[i].DMB_NumNgb, rho_gas, kT_gas,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
+            accel[0], accel[1], accel[2], *dUdt
+        );
+    }
+
 
     // check for NaNs
     bool nan_detected = isnan(*dUdt);
@@ -249,6 +270,43 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
     for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_gas) / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS) * All.cf_atime; }
     *dUdt = (P[i].DMB_HeatExch / rho_gas) / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS); // note: not sure if I need an All.cf_* factor here
 
+    if (P[i].ID == 33768) {
+        printf(
+            "Update on ID %d:\n"
+            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
+            "  rho_gas=%.3e, kT_gas=%.3e\n"
+            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_DM=%.3e, kT_DM=%.3e\n"
+            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
+            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
+            P[i].ID,
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            rho_gas, kT_gas,
+            P[i].DMB_NgbInt, P[i].DMB_NumNgb,
+            rho_DM, kT_DM,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
+            accel[0], accel[1], accel[2], *dUdt
+        );
+    }
+
+    double accel_mag = sqrt(accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2]);
+    if (accel_mag > 1e10) {
+        printf(
+            "Crazy acceleration on ID %d (type %d):\n"
+            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
+            "  rho_gas=%.3e, kT_gas=%.3e\n"
+            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_DM=%.3e, kT_DM=%.3e\n"
+            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
+            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
+            P[i].ID, P[i].Type,
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            rho_gas, kT_gas,
+            P[i].DMB_NgbInt, P[i].DMB_NumNgb,
+            rho_DM, kT_DM,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
+            accel[0], accel[1], accel[2], *dUdt
+        );
+    }
+
     // check for NaNs
     bool nan_detected = isnan(*dUdt);
     for (k = 0; k < 3; k++) { nan_detected = nan_detected || isnan(accel[k]); }
@@ -277,17 +335,17 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
 }
 
 /*! Computes exchange rates and stores them in `accel` and `dUdt`. */
-void compute_exch_rates(int i, double accel[3], double *dUdt) {
+void compute_exch_rates(int i) {
     if (P[i].DMB_NgbInt == 0) {
-        int k; for (k = 0; k < 3; k++) { accel[k] = 0.; }
-        *dUdt = 0.;
+        int k; for (k = 0; k < 3; k++) { P[i].DMB_Accel[k] = 0.; }
+        P[i].DMB_DtInternalEnergy = 0.;
         return;
     }
 
     if (P[i].Type == 0)
-        compute_exch_rates_gas(i, accel, dUdt);
+        compute_exch_rates_gas(i, P[i].DMB_Accel, &P[i].DMB_DtInternalEnergy);
     else if (P[i].Type == 1)
-        compute_exch_rates_DM(i, accel, dUdt);
+        compute_exch_rates_DM(i, P[i].DMB_Accel, &P[i].DMB_DtInternalEnergy);
 }
 
 /*! This function simply initializes some variables to prevent memory errors */
