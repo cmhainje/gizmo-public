@@ -971,6 +971,8 @@ double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, 
 void dmb_calc(void);
 // void dmb_density(void);
 void dmb_setup_smoothinglengths(void);
+double script_A(double w, double kT_over_m);
+double script_B(double w, double kT_over_m);
 void compute_exch_rates(int i); //, double accel[3], double* dUdt);
 // void compute_kicks(int i, double v_kick[3], double* q_kick);
 double temperature_DM(double vel_disp);

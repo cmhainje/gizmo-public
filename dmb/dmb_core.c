@@ -1,6 +1,7 @@
 #include <math.h>
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_hyperg.h>
+#include <gsl/gsl_randist.h>
 
 #include "../allvars.h"
 #include "../proto.h"
@@ -10,7 +11,7 @@
  *
  *  This file contains the functions and routines necesary for the computation of
  *  the momentum and heat exchange between dark matter and baryons due to interactions.
- *  Written by Connor Hainje, connor.hainje@nyu.edu, 2023.
+ *  Written by Connor Hainje, connor.hainje@nyu.edu, 2023-2024.
  */
 
 #ifdef DM_DMB
@@ -40,8 +41,7 @@ double script_A(double w, double kT_over_m)
     int n = All.DMB_InteractionPowerScale;
     double alpha = gsl_sf_hyperg_1F1(-0.5 * (n + 1), 2.5, -0.5 * w * w / kT_over_m);
     double sigma = All.DMB_InteractionCrossSection;
-    double c = sqrt((1 << (5 + n)) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
-    //               ^^ (1 << k) computes 2^k as an int
+    double c = sqrt(pow(2., 5. + n) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
 
     double out = c * sigma * pow(kT_over_m, 0.5 * (n + 1.0)) * alpha;
 
@@ -65,8 +65,7 @@ double script_B(double w, double kT_over_m)
     int n = All.DMB_InteractionPowerScale;
     double beta = gsl_sf_hyperg_1F1(-0.5 * (n + 3), 1.5, -0.5 * w * w / kT_over_m);
     double sigma = All.DMB_InteractionCrossSection;
-    double c = sqrt((1 << (5 + n)) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
-    //               ^^ (1 << k) computes 2^k as an int
+    double c = sqrt(pow(2., 5. + n) / (9.0 * M_PI)) * gsl_sf_gamma(3.0 + 0.5 * n);
 
     double out = 3.0 * c * sigma * pow(kT_over_m, 0.5 * (n + 3.0)) * beta;
 
@@ -81,7 +80,7 @@ double script_B(double w, double kT_over_m)
  *  dV is the dark matter velocity minus the baryon velocity (in that order)
  *  rho_DM, kT_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
  *  rho_B, kT_B, m_B are the same for baryonic matter
- * 
+ *
  *  Units:
  *    dV: velocity, physical, cgs (cm/s)
  *    rho_*: density, physical, cgs
@@ -127,7 +126,7 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
     double A = script_A(dV_mag, v_th_2);
     double B = script_B(dV_mag, v_th_2);
     double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
-    double out = coeff * (B * (kT_B - kT_DM) / (m_DM + m_B) + kT_DM / m_DM * A * dV_mag * dV_mag);
+    double out = coeff * (B * (kT_B - kT_DM) / (m_DM + m_B)); // + kT_DM / m_DM * A * dV_mag * dV_mag);
     if (v_th_2 == 0) out = 0;
 
     if (isnan(out)) {
@@ -151,7 +150,7 @@ double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, do
 double temperature_DM(double vel_disp)
 {
     double vd = vel_disp * UNIT_VEL_IN_CGS / All.cf_atime; // code -> phys
-    return All.DMB_DarkMatterMass * vd * vd;
+    return All.DMB_DarkMatterMass * vd * vd / 3.0;
 }
 
 /*! Computes exchange rates and stores them in `accel` and `dUdt`. */
@@ -159,18 +158,19 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     int k;
 
     // compute dV := v_DM (self) - v_gas (other) in [cgs]
-    double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].Vel[k] - P[i].DMB_V[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
+    double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].AGS_VelMean[k] - P[i].DMB_V[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
 
     // densities
     double rho_DM = P[i].AGS_Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
     double rho_gas = P[i].DMB_Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
 
-    // temperatures
+    // temperatures (already in physical units)
     double kT_DM = P[i].DMB_MyTemp;
     double kT_gas = P[i].DMB_Temperature;
 
     // compute momentum, internal energy exchange rates per volume
     mom_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass, P[i].DMB_MomExch);
+    // for (k = 0; k < 3; k++) { P[i].DMB_MomExch[k] = 0.; }
     P[i].DMB_HeatExch = heat_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass);
 
     // translate exchange rates into accel and d(spec energy)/dt in code units
@@ -259,6 +259,7 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
 
     // convert B -> DM into DM -> B
     for (k = 0; k < 3; k++) { P[i].DMB_MomExch[k] = -1 * Pdot_DM[k]; }
+    // for (k = 0; k < 3; k++) { P[i].DMB_MomExch[k] = 0.; }
     P[i].DMB_HeatExch = (
         P[i].DMB_MomExch[0] * dV[0]
         + P[i].DMB_MomExch[1] * dV[1]

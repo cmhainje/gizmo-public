@@ -576,23 +576,32 @@ void ags_density(void)
 #ifdef DM_DMB
                 // compute velocity dispersion
                 int k;
-                for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NgbInt; }
-                double meanv_mag2 = P[i].AGS_VelMean[0]*P[i].AGS_VelMean[0] + P[i].AGS_VelMean[1]*P[i].AGS_VelMean[1] + P[i].AGS_VelMean[2]*P[i].AGS_VelMean[2];
-                double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NgbInt;
+                if (P[i].AGS_NgbInt == 0) {
+                    // handle zero neighbors
+                    for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] = P[i].Vel[k]; }
+                    P[i].AGS_VelDisp = 0.;
+                } else {
+                    for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NgbInt; }
+                    double meanv_mag2 = P[i].AGS_VelMean[0]*P[i].AGS_VelMean[0] + P[i].AGS_VelMean[1]*P[i].AGS_VelMean[1] + P[i].AGS_VelMean[2]*P[i].AGS_VelMean[2];
+                    double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NgbInt;
+                    double new_vel_disp = (1./All.cf_atime) * sqrt(vel_disp - meanv_mag2); // / 1.732; // 1d velocity dispersion
 
-                double new_vel_disp = (1./All.cf_atime) * sqrt(vel_disp - meanv_mag2) / 1.732; // 1d velocity dispersion
-                if ((vel_disp - meanv_mag2) <= 0 && fabs((vel_disp - meanv_mag2) / vel_disp) < 1e-5) {
-                    new_vel_disp = 0.0; // handle the case where this is only negative bc of floating point problems
+                    if ((vel_disp - meanv_mag2) <= 0 && fabs((vel_disp - meanv_mag2) / vel_disp) < 1e-5) {
+                        new_vel_disp = 0.0; // handle the case where this is only negative bc of floating point problems
+                    }
+
+                    if (isnan(new_vel_disp)) {
+                        printf("AGS_VelDisp is NaN\n");
+                        printf("  veldisp = %.3e\n", vel_disp);
+                        printf("  meanv_mag2 = %.3e\n", meanv_mag2);
+                        printf("  original AGS_VelDisp = %.3e\n", P[i].AGS_VelDisp);
+                        printf("  AVS_VelMean = [%.3e, %.3e, %.3e]\n", P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2]);
+                        printf("  AGS_NgbInt = %d\n", P[i].AGS_NgbInt);
+                    }
+
+                    P[i].AGS_VelDisp = new_vel_disp;
                 }
 
-                if (isnan(new_vel_disp)) {
-                    printf("AGS_VelDisp is NaN\n");
-                    printf("  veldisp = %.3e\n", vel_disp);
-                    printf("  meanv_mag2 = %.3e\n", meanv_mag2);
-                    printf("  original AGS_VelDisp = %.3e\n", P[i].AGS_VelDisp);
-                }
-
-                P[i].AGS_VelDisp = new_vel_disp;
 #endif
                 PPP[i].NumNgb = pow(PPP[i].NumNgb , 1./NUMDIMS); /* convert NGB to the more useful format, NumNgb^(1/NDIMS), which we can use to obtain the corrected particle sizes */
             } else {
