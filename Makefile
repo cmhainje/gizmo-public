@@ -103,6 +103,20 @@ FINCL =
 
 #----------------------------------------------------------------------------------------------
 
+ifeq ($(SYSTYPE),"Docker")
+CC        = mpicc
+CXX       = mpic++
+FC        = mpif90 -Wno-main
+OPTIMIZE  = -O2 -openmp
+GSL_INCL  = -I/usr/include
+GSL_LIBS  = -L/aarch64-linux-gnu -lgsl -lgslcblas -lm 
+FFTW_INCL = -I/usr/include
+FFTW_LIBS = -L/aarch64-linux-gnu -lfftw3
+HDF5INCL  = -I/usr/include/hdf5/openmpi -DH5_USE_16_API
+HDF5LIB   = -L/usr/lib/aarch64-linux-gnu/hdf5/openmpi -L/usr/lib/aarch64-linux-gnu/openmpi/lib -lhdf5 -lmpi -lz
+MPICHLIB  =
+endif
+
 ifeq ($(SYSTYPE),"Greene")
 CC        = mpicc
 CXX       = mpic++

@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  dev:
+    build: .
+    volumes:
+      - .:/workspace
+      - dev-cache:/root/.cache
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+volumes:
+  dev-cache:

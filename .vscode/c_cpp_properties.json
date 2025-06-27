@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "hpc docker",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/include/aarch64-linux-gnu",
+                "/usr/lib/aarch64-linux-gnu/openmpi/include",
+                "/usr/include/hdf5/serial",
+                "/usr/include/hdf5/openmpi"
+            ],
+            "defines": [
+                "H5_USE_16_API"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm64"
+        }
+    ],
+    "version": 4
+}
