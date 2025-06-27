@@ -1,5 +1,8 @@
 {
     "files.associations": {
         "allvars.h": "c"
+    },
+    "[c]": {
+        "editor.formatOnSave": false
     }
 }
