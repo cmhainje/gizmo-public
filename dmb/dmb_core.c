@@ -174,55 +174,92 @@ double temperature_DM(double vel_disp)
 void print_everything(int i)
 {
     // clang-format off
-    printf(
-        "  index %d, ID %d, type %d\n"
-        "  xyz          = [%f, %f, %f]\n"
-        "  vel          = [%f, %f, %f]\n"
-        "  m_DM         = %e\n"
-        "  AGS_Density  = %e\n"
-        "  AGS_Hsml     = %e\n"
-        "  AGS_NgbInt   = %d\n"
-        "  AGS_NumNgb   = %e\n"
-        "  AGS_VelMean  = [%f, %f, %f]\n"
-        "  AGS_VelDisp  = %e\n"
-        "  DMB_MyTemp   = %e\n"
-        "  DMB_Hsml     = %e\n"
-        "  DMB_NumNgb   = %e\n"
-        "  DMB_V        = [%f, %f, %f]\n"
-        "  DMB_Density  = %e\n"
-        "  DMB_Temp     = %e\n"
-        "  DMB_MyMass   = %e\n"
-        "  DMB_GasMass  = %e\n"
-        "  DMB_MomExch  = [%e, %e, %e]\n"
-        "  DMB_HeatExch = %e\n"
-        "  DMB_Accel    = [%e, %e, %e]\n"
-        "  DMB_DtIntEgy = %e\n"
-        "  DMB_MomExchd = %e\n"
-        "  DMB_EgyExchd = %e\n",
-        i, P[i].ID, P[i].Type,
-        P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
-        P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
-        All.DMB_DarkMatterMass,
-        P[i].AGS_Density,
-        P[i].AGS_Hsml,
-        P[i].AGS_NgbInt,
-        P[i].AGS_NumNgb,
-        P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2],
-        P[i].AGS_VelDisp,
-        P[i].DMB_MyTemp,
-        P[i].DMB_Hsml,
-        P[i].DMB_NumNgb,
-        P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2],
-        P[i].DMB_Density,
-        P[i].DMB_Temperature,
-        P[i].DMB_MyMass,
-        P[i].DMB_GasMass,
-        P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2],
-        P[i].DMB_HeatExch,
-        P[i].DMB_Accel[0], P[i].DMB_Accel[1], P[i].DMB_Accel[2],
-        P[i].DMB_DtInternalEnergy,
-        P[i].DMB_MomentumExchanged,
-        P[i].DMB_EnergyExchanged);
+    if (P[i].Type == 0)
+        printf(
+            "  index %d, ID %d, type %d\n"
+            "  xyz          = [%f, %f, %f]\n"
+            "  vel          = [%f, %f, %f]\n"
+            "  m_DM         = %e\n"
+            "  SphP.Density = %e\n"
+            "  DMB_MyTemp   = %e\n"
+            "  DMB_Hsml     = %e\n"
+            "  DMB_NumNgb   = %f\n"
+            "  DMB_V        = [%f, %f, %f]\n"
+            "  DMB_Density  = %e\n"
+            "  DMB_Temp     = %e\n"
+            "  DMB_MyMass   = %e\n"
+            "  DMB_MomExch  = [%e, %e, %e]\n"
+            "  DMB_HeatExch = %e\n"
+            "  DMB_Accel    = [%e, %e, %e]\n"
+            "  DMB_DtIntEgy = %e\n"
+            "  DMB_MomExchd = %e\n"
+            "  DMB_EgyExchd = %e\n",
+            i, P[i].ID, P[i].Type,
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
+            P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            All.DMB_DarkMatterMass,
+            SphP[i].Density,
+            P[i].DMB_MyTemp,
+            P[i].DMB_Hsml,
+            P[i].DMB_NumNgb,
+            P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2],
+            P[i].DMB_Density,
+            P[i].DMB_Temperature,
+            P[i].DMB_MyMass,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2],
+            P[i].DMB_HeatExch,
+            P[i].DMB_Accel[0], P[i].DMB_Accel[1], P[i].DMB_Accel[2],
+            P[i].DMB_DtInternalEnergy,
+            P[i].DMB_MomentumExchanged,
+            P[i].DMB_EnergyExchanged);
+    else if (P[i].Type == 1)
+        printf(
+            "  index %d, ID %d, type %d\n"
+            "  xyz          = [%f, %f, %f]\n"
+            "  vel          = [%f, %f, %f]\n"
+            "  m_DM         = %e\n"
+            "  AGS_Density  = %e\n"
+            "  AGS_Hsml     = %e\n"
+            "  AGS_NgbInt   = %d\n"
+            "  AGS_NumNgb   = %e\n"
+            "  AGS_VelMean  = [%f, %f, %f]\n"
+            "  AGS_VelDisp  = %e\n"
+            "  DMB_MyTemp   = %e\n"
+            "  DMB_Hsml     = %e\n"
+            "  DMB_NumNgb   = %e\n"
+            "  DMB_V        = [%f, %f, %f]\n"
+            "  DMB_Density  = %e\n"
+            "  DMB_Temp     = %e\n"
+            "  DMB_GasMass  = %e\n"
+            "  DMB_MomExch  = [%e, %e, %e]\n"
+            "  DMB_HeatExch = %e\n"
+            "  DMB_Accel    = [%e, %e, %e]\n"
+            "  DMB_DtIntEgy = %e\n"
+            "  DMB_MomExchd = %e\n"
+            "  DMB_EgyExchd = %e\n",
+            i, P[i].ID, P[i].Type,
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
+            P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            All.DMB_DarkMatterMass,
+            P[i].AGS_Density,
+            P[i].AGS_Hsml,
+            P[i].AGS_NgbInt,
+            P[i].AGS_NumNgb,
+            P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2],
+            P[i].AGS_VelDisp,
+            P[i].DMB_MyTemp,
+            P[i].DMB_Hsml,
+            P[i].DMB_NumNgb,
+            P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2],
+            P[i].DMB_Density,
+            P[i].DMB_Temperature,
+            P[i].DMB_GasMass,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2],
+            P[i].DMB_HeatExch,
+            P[i].DMB_Accel[0], P[i].DMB_Accel[1], P[i].DMB_Accel[2],
+            P[i].DMB_DtInternalEnergy,
+            P[i].DMB_MomentumExchanged,
+            P[i].DMB_EnergyExchanged);
     // clang-format on
 }
 
