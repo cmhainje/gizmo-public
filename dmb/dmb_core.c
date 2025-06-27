@@ -153,6 +153,98 @@ double temperature_DM(double vel_disp)
     return All.DMB_DarkMatterMass * vd * vd / 3.0;
 }
 
+
+void print_everything(int i) {
+    if (P[i].Type == 0)
+        printf(
+            "  index %d, ID %d, type %d\n"
+            "  xyz          = [%f, %f, %f]\n"
+            "  vel          = [%f, %f, %f]\n"
+            "  m_DM         = %e\n"
+            "  SphP.Density = %e\n"
+            "  DMB_MyTemp   = %e\n"
+            "  DMB_Hsml     = %e\n"
+            "  DMB_NumNgb   = %f\n"
+            "  DMB_V        = [%f, %f, %f]\n"
+            "  DMB_Density  = %e\n"
+            "  DMB_Temp     = %e\n"
+            "  DMB_MyMass   = %e\n"
+            "  DMB_MomExch  = [%e, %e, %e]\n"
+            "  DMB_HeatExch = %e\n"
+            "  DMB_Accel    = [%e, %e, %e]\n"
+            "  DMB_DtIntEgy = %e\n"
+            "  DMB_MomExchd = %e\n"
+            "  DMB_EgyExchd = %e\n",
+            i, P[i].ID, P[i].Type,
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
+            P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            All.DMB_DarkMatterMass,
+            SphP[i].Density,
+            P[i].DMB_MyTemp,
+            P[i].DMB_Hsml,
+            P[i].DMB_NumNgb,
+            P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2],
+            P[i].DMB_Density,
+            P[i].DMB_Temperature,
+            P[i].DMB_MyMass,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2],
+            P[i].DMB_HeatExch,
+            P[i].DMB_Accel[0], P[i].DMB_Accel[1], P[i].DMB_Accel[2],
+            P[i].DMB_DtInternalEnergy,
+            P[i].DMB_MomentumExchanged,
+            P[i].DMB_EnergyExchanged);
+    else if (P[i].Type == 1)
+        printf(
+            "  index %d, ID %d, type %d\n"
+            "  xyz          = [%f, %f, %f]\n"
+            "  vel          = [%f, %f, %f]\n"
+            "  m_DM         = %e\n"
+            "  AGS_Density  = %e\n"
+            "  AGS_Hsml     = %e\n"
+            "  AGS_NgbInt   = %d\n"
+            "  AGS_NumNgb   = %e\n"
+            "  AGS_VelMean  = [%f, %f, %f]\n"
+            "  AGS_VelDisp  = %e\n"
+            "  DMB_MyTemp   = %e\n"
+            "  DMB_Hsml     = %e\n"
+            "  DMB_NumNgb   = %e\n"
+            "  DMB_V        = [%f, %f, %f]\n"
+            "  DMB_Density  = %e\n"
+            "  DMB_Temp     = %e\n"
+            "  DMB_GasMass  = %e\n"
+            "  DMB_MomExch  = [%e, %e, %e]\n"
+            "  DMB_HeatExch = %e\n"
+            "  DMB_Accel    = [%e, %e, %e]\n"
+            "  DMB_DtIntEgy = %e\n"
+            "  DMB_MomExchd = %e\n"
+            "  DMB_EgyExchd = %e\n",
+            i, P[i].ID, P[i].Type,
+            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
+            P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
+            All.DMB_DarkMatterMass,
+            P[i].AGS_Density,
+            P[i].AGS_Hsml,
+            P[i].AGS_NgbInt,
+            P[i].AGS_NumNgb,
+            P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2],
+            P[i].AGS_VelDisp,
+            P[i].DMB_MyTemp,
+            P[i].DMB_Hsml,
+            P[i].DMB_NumNgb,
+            P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2],
+            P[i].DMB_Density,
+            P[i].DMB_Temperature,
+            P[i].DMB_GasMass,
+            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2],
+            P[i].DMB_HeatExch,
+            P[i].DMB_Accel[0], P[i].DMB_Accel[1], P[i].DMB_Accel[2],
+            P[i].DMB_DtInternalEnergy,
+            P[i].DMB_MomentumExchanged,
+            P[i].DMB_EnergyExchanged);
+}
+
+
+
 /*! Computes exchange rates and stores them in `accel` and `dUdt`. */
 void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     int k;
@@ -190,60 +282,15 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     *dUdt = 0.0;
 #endif
 
-    // if (P[i].ID == 70462) {
-    //     printf(
-    //         "Update on ID %d:\n"
-    //         "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
-    //         "  AGS_Hsml=%.3e, AGS_NumNgb=%d, rho=%.3e, kT=%.3e\n"
-    //         "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_gas=%.3e, kT_gas=%.3e\n"
-    //         "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
-    //         "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
-    //         P[i].ID,
-    //         P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
-    //         P[i].AGS_Hsml, P[i].AGS_NgbInt, rho_DM, kT_DM,
-    //         P[i].DMB_NgbInt, P[i].DMB_NumNgb, rho_gas, kT_gas,
-    //         P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
-    //         accel[0], accel[1], accel[2], *dUdt
-    //     );
-    // }
-
     double accel_mag = sqrt(accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2]);
     if ((accel_mag > 1e10) || (abs(*dUdt) > 1e10)) {
-        printf(
-            "Crazy behavior on ID %d (type %d):\n"
-            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
-            "  AGS_Hsml=%.3e, AGS_NumNgb=%d, rho=%.3e, kT=%.3e\n"
-            "  AGS_VelMean=[%.3f, %.3f, %.3f], AGS_VelDisp=%.3e\n"
-            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_gas=%.3e, kT_gas=%.3e\n"
-            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
-            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
-            P[i].ID, P[i].Type,
-            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
-            P[i].AGS_Hsml, P[i].AGS_NgbInt, rho_DM, kT_DM,
-            P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2], P[i].AGS_VelDisp,
-            P[i].DMB_NgbInt, P[i].DMB_NumNgb, rho_gas, kT_gas,
-            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
-            accel[0], accel[1], accel[2], *dUdt
-        );
+        printf("Crazy behavior on ID %d (type %d):\n", i, P[i].Type);
+        print_everything(i);
     }
 
     if ((GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) > 0) && (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) < 1e-9)) {
-        printf(
-            "Tiny timestep for ID %d (type %d):\n"
-            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
-            "  AGS_Hsml=%.3e, AGS_NumNgb=%d, rho=%.3e, kT=%.3e\n"
-            "  AGS_VelMean=[%.3f, %.3f, %.3f], AGS_VelDisp=%.3e\n"
-            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_gas=%.3e, kT_gas=%.3e\n"
-            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
-            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
-            P[i].ID, P[i].Type,
-            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
-            P[i].AGS_Hsml, P[i].AGS_NgbInt, rho_DM, kT_DM,
-            P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2], P[i].AGS_VelDisp,
-            P[i].DMB_NgbInt, P[i].DMB_NumNgb, rho_gas, kT_gas,
-            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
-            accel[0], accel[1], accel[2], *dUdt
-        );
+        printf("Tiny timestep for ID %d (type %d):\n", i, P[i].Type);
+        print_everything(i);
     }
 
 
@@ -252,28 +299,7 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     for (k = 0; k < 3; k++) { nan_detected = nan_detected || isnan(accel[k]); }
     if (nan_detected) {
         printf("compute_exch_rates_DM returning NaN. inputs were:\n");
-        printf("  index %d, ID %d\n", i, P[i].ID);
-        printf("  xyz        = [%f, %f, %f]\n", P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
-        printf("  vel        = [%f, %f, %f]\n", P[i].Vel[0], P[i].Vel[1], P[i].Vel[2]);
-        printf("  v_DM       = [%f, %f, %f]\n", P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2]);
-        printf("  v_gas      = [%f, %f, %f]\n", P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2]);
-        printf("  dV         = [%f, %f, %f]\n", dV[0], dV[1], dV[2]);
-        printf("  rho_DM     = %e\n", rho_DM);
-        printf("  rho_gas    = %e\n", rho_gas);
-        printf("  kT_DM      = %e\n", kT_DM);
-        printf("  kT_gas     = %e\n", kT_gas);
-        printf("  m_DM       = %e\n", All.DMB_DarkMatterMass);
-        printf("  m_gas      = %e\n", P[i].DMB_GasMass);
-        printf("  AGS_Hsml   = %e\n", P[i].AGS_Hsml);
-        printf("  AGS_NgbInt = %d\n", P[i].AGS_NgbInt);
-        printf("  AGS_NumNgb = %e\n", P[i].AGS_NumNgb);
-        printf("  AGS_VelDisp= %e\n", P[i].AGS_VelDisp);
-        printf("  DMB_Hsml   = %e\n", P[i].DMB_Hsml);
-        printf("  DMB_NumNgb = %e\n", P[i].DMB_NumNgb);
-        printf("  mom_exch   = [%e, %e, %e]\n", P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2]);
-        printf("  heat_exch  = %e\n", P[i].DMB_HeatExch);
-        printf("  accel      = [%e, %e, %e]\n", accel[0], accel[1], accel[2]);
-        printf("  dUdt       = %e\n", *dUdt);
+        print_everything(i);
     }
 }
 
@@ -323,60 +349,15 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
     *dUdt = 0.0;
 #endif
 
-
-    // if (P[i].ID == 33768) {
-    //     printf(
-    //         "Update on ID %d:\n"
-    //         "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
-    //         "  rho_gas=%.3e, kT_gas=%.3e\n"
-    //         "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_DM=%.3e, kT_DM=%.3e\n"
-    //         "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
-    //         "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
-    //         P[i].ID,
-    //         P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
-    //         rho_gas, kT_gas,
-    //         P[i].DMB_NgbInt, P[i].DMB_NumNgb,
-    //         rho_DM, kT_DM,
-    //         P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
-    //         accel[0], accel[1], accel[2], *dUdt
-    //     );
-    // }
-
     double accel_mag = sqrt(accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2]);
     if ((accel_mag > 1e10) || (abs(*dUdt) > 1e10)) {
-        printf(
-            "Crazy acceleration on ID %d (type %d):\n"
-            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
-            "  rho_gas=%.3e, kT_gas=%.3e\n"
-            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_DM=%.3e, kT_DM=%.3e\n"
-            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
-            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
-            P[i].ID, P[i].Type,
-            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
-            rho_gas, kT_gas,
-            P[i].DMB_NgbInt, P[i].DMB_NumNgb,
-            rho_DM, kT_DM,
-            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
-            accel[0], accel[1], accel[2], *dUdt
-        );
+        printf("Crazy behavior on ID %d (type %d):\n", i, P[i].Type);
+        print_everything(i);
     }
 
     if ((GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) > 0) && (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) < 1e-9)) {
-        printf(
-            "Tiny timestep for ID %d (type %d):\n"
-            "  pos=[%.3f, %.3f, %.3f], vel=[%.3f, %.3f, %.3f]\n"
-            "  rho_gas=%.3e, kT_gas=%.3e\n"
-            "  DMB_NgbInt=%d, DMB_NumNgb=%.3e, rho_DM=%.3e, kT_DM=%.3e\n"
-            "  mom_exch=[%.3e, %.3e, %.3e], heat_exch=%.3e\n"
-            "  accel=[%.3e, %.3e, %.3e], dUdt=%.3e\n",
-            P[i].ID, P[i].Type,
-            P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].Vel[0], P[i].Vel[1], P[i].Vel[2],
-            rho_gas, kT_gas,
-            P[i].DMB_NgbInt, P[i].DMB_NumNgb,
-            rho_DM, kT_DM,
-            P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2], P[i].DMB_HeatExch,
-            accel[0], accel[1], accel[2], *dUdt
-        );
+        printf("Tiny timestep for ID %d (type %d):\n", i, P[i].Type);
+        print_everything(i);
     }
 
     // check for NaNs
@@ -384,25 +365,7 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
     for (k = 0; k < 3; k++) { nan_detected = nan_detected || isnan(accel[k]); }
     if (nan_detected) {
         printf("compute_exch_rates_gas returning NaN. inputs were:\n");
-        printf("  index %d\n", i);
-        printf("  xyz          = [%f, %f, %f]\n", P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
-        printf("  v_DM         = [%f, %f, %f]\n", P[i].DMB_V[0], P[i].DMB_V[1], P[i].DMB_V[2]);
-        printf("  v_gas        = [%f, %f, %f]\n", P[i].Vel[0], P[i].Vel[1], P[i].Vel[2]);
-        printf("  dV           = [%f, %f, %f]\n", dV[0], dV[1], dV[2]);
-        printf("  rho_DM       = %e\n", rho_DM);
-        printf("  rho_gas      = %e\n", rho_gas);
-        printf("  kT_DM        = %e\n", kT_DM);
-        printf("  kT_gas       = %e\n", kT_gas);
-        printf("  m_DM         = %e\n", All.DMB_DarkMatterMass);
-        printf("  m_gas        = %e\n", P[i].DMB_MyMass);
-        printf("  DMB_Hsml     = %e\n", P[i].DMB_Hsml);
-        printf("  DMB_NumNgb   = %e\n", P[i].DMB_NumNgb);
-        printf("  mom_exch_DM  = [%e, %e, %e]\n", Pdot_DM[0], Pdot_DM[1], Pdot_DM[2]);
-        printf("  heat_exch_DM = %e\n", Qdot_DM);
-        printf("  mom_exch     = [%e, %e, %e]\n", P[i].DMB_MomExch[0], P[i].DMB_MomExch[1], P[i].DMB_MomExch[2]);
-        printf("  heat_exch    = %e\n", P[i].DMB_HeatExch);
-        printf("  accel        = [%e, %e, %e]\n", accel[0], accel[1], accel[2]);
-        printf("  dUdt         = %e\n", *dUdt);
+        print_everything(i);
     }
 }
 
