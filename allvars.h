@@ -2677,6 +2677,7 @@ extern ALIGN(32) struct particle_data
     MyFloat  AGS_Density;    /*!< DM density at DM particle, estimated by AGS */
     MyFloat  AGS_VelMean[3]; /*!< DM mean velocity at DM particle, estimated by AGS, for computing VelDisp */
     MyFloat  AGS_VelDisp;    /*!< DM velocity dispersion at DM particle, estimated by AGS */
+    MyDouble AGS_NumNgb;      /*!< number of neighbor DM/gas particles */
     int AGS_NgbInt;         /*!< true number of neighbors */
 
     MyDouble DMB_MyTemp;      /*!< temperature of self */
@@ -2696,6 +2697,9 @@ extern ALIGN(32) struct particle_data
 
     MyDouble DMB_Accel[3]; /*!< acceleration */
     MyDouble DMB_DtInternalEnergy; /*!< rate of change of internal energy */
+
+    // MyDouble DMB_LastEnergyExchanged; /*!< (DtInternalEnergy * dt) last timestep */
+    // MyDouble DMB_EnergyError;         /*!< cumulative LastEnergyExchanged - (actual Delta E) */
 
     MyDouble DMB_MomentumExchanged; /*!< cumulative momentum exchanged */
     MyDouble DMB_EnergyExchanged;   /*!< cumulative energy exchanged */
@@ -3619,6 +3623,7 @@ enum iofields
 
   IO_DMB_MOMEXCHED,
   IO_DMB_HEATEXCHED,
+  // IO_DMB_EGYERR,
 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };

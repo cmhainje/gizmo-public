@@ -1958,6 +1958,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+//         case IO_DMB_EGYERR:
+// #ifdef DM_DMB
+//             for(n = 0; n < pc; pindex++) {
+//                 if(P[pindex].Type == type) {
+//                     *fp++ = (MyOutputFloat) P[pindex].DMB_EnergyError;
+//                     n++;
+//                 }
+//             }
+// #endif
+//             break;
+
 
 
         case IO_LASTENTRY:
@@ -2123,6 +2134,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_DMB_HEATEXCH:
         case IO_DMB_MOMEXCHED:
         case IO_DMB_HEATEXCHED:
+        // case IO_DMB_EGYERR:
             if(mode)
                 bytes_per_blockelement = sizeof(MyInputFloat);
             else
@@ -2452,6 +2464,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_DMB_HEATEXCH:
         case IO_DMB_MOMEXCHED:
         case IO_DMB_HEATEXCHED:
+        // case IO_DMB_EGYERR:
         case IO_DMB_AGS_NUMNGB:
         case IO_DMB_NUMNGB:
             values = 1;
@@ -2806,6 +2819,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_DMB_HEATEXCH:
         case IO_DMB_MOMEXCHED:
         case IO_DMB_HEATEXCHED:
+        // case IO_DMB_EGYERR:
             for(i = 0; i < 6; i++) {
                 if (i < 2 && ngas > 0 && header.npart[1] > 0) {
                     typelist[i] = 1;
@@ -3438,6 +3452,7 @@ int blockpresent(enum iofields blocknr)
         case IO_DMB_HEATEXCH:
         case IO_DMB_MOMEXCHED:
         case IO_DMB_HEATEXCHED:
+        // case IO_DMB_EGYERR:
 #ifdef DM_DMB
             return 1;
 #endif
@@ -3905,6 +3920,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_DMB_HEATEXCHED:
             strncpy(label, "dbHT", 4);
             break;
+        // case IO_DMB_EGYERR:
+        //     strncpy(label, "dbEE", 4);
+        //     break;
 
         case IO_LASTENTRY:
             endrun(217);
@@ -4364,6 +4382,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_DMB_HEATEXCHED:
             strcpy(buf, "DMB_HeatExchanged");
             break;
+        // case IO_DMB_EGYERR:
+        //     strcpy(buf, "DMB_EnergyError");
+        //     break;
         case IO_LASTENTRY:
             endrun(218);
             break;

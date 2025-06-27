@@ -183,16 +183,16 @@ void dmb_calc(void)
         // compute temperatures once per particle (dmb_isactive or not)
         if (P[i].Type == 0) {
             double u = SphP[i].InternalEnergyPred;
+            double mu = 1.0;
 #ifdef COOLING
             double rho = SphP[i].Density * All.cf_a3inv;
-            double mu=1, ne=1, nh0=0, nHe0, nHepp, nhp, nHeII;
+            double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII;
             double T = ThermalProperties(u, rho, i, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp) * BOLTZMANN_CGS;
             P[i].DMB_MyTemp = T;
-            P[i].DMB_MyMass = mu * PROTONMASS_CGS;
 #else
-            P[i].DMB_MyMass = PROTONMASS_CGS;
-            P[i].DMB_MyTemp = (2./3.) * u * U_TO_TEMP_UNITS * BOLTZMANN_CGS;
+            P[i].DMB_MyTemp = u * ((2./3.) * mu * U_TO_TEMP_UNITS) * BOLTZMANN_CGS;
 #endif
+            P[i].DMB_MyMass = mu * PROTONMASS_CGS;
         }
         else if (P[i].Type == 1) {
             P[i].DMB_GasMass = 0;
@@ -201,6 +201,17 @@ void dmb_calc(void)
                 printf("DM temperature is nan\n");
                 printf("  AGS_VelDisp = %.3e\n", P[i].AGS_VelDisp);
             }
+            double mu = All.DMB_DarkMatterMass / PROTONMASS_CGS;
+            double new_energy = P[i].DMB_MyTemp / ((2./3.) * mu * U_TO_TEMP_UNITS * BOLTZMANN_CGS);
+
+            // if (P[i].DMB_LastEnergyExchanged != 0) {
+            //     double last_energy = P[i].DMB_InternalEnergy;
+            //     double Delta_U_actual = new_energy - last_energy;
+            //     double Delta_U_desired = P[i].DMB_LastEnergyExchanged;
+            //     P[i].DMB_EnergyError += Delta_U_actual - Delta_U_desired;
+            // }
+
+            P[i].DMB_InternalEnergy = new_energy;
         }
     }
 
@@ -339,8 +350,22 @@ void dmb_calc(void)
 
             // now all the ingredients are known -> compute and apply exchange rates!
             compute_exch_rates(i);
-            int k; for (k = 0; k < 3; k++) { P[i].GravAccel[k] += P[i].DMB_Accel[k]; }
-            if (P[i].Type == 0) { SphP[i].DtInternalEnergy += P[i].DMB_DtInternalEnergy; }
+
+            int k;
+            if (P[i].Type == 0) {
+                for (k = 0; k < 3; k++) { P[i].GravAccel[k] += P[i].DMB_Accel[k]; }
+                SphP[i].DtInternalEnergy += P[i].DMB_DtInternalEnergy;
+            } else {
+                double dt_veldisp_ratio = 0.0;
+                // trying something new Re: DM velocity dispersion!
+                if (abs(P[i].AGS_VelDisp) > 0) {
+                    dt_veldisp_ratio = P[i].DMB_DtInternalEnergy / (P[i].AGS_VelDisp * P[i].AGS_VelDisp);
+                }
+                for (k = 0; k < 3; k++) {
+                    P[i].GravAccel[k] += P[i].DMB_Accel[k] + (P[i].Vel[k] - P[i].AGS_VelMean[k]) * dt_veldisp_ratio;
+                }
+            }
+
         }
     }
 

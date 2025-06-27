@@ -84,6 +84,9 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 struct kernel_density 
 {
     double dp[3],dv[3],r, wk, dwk, hinv, hinv3, hinv4; /*! Structure for communication during the density computation. Holds data that is sent to other processors */
+#ifdef DM_DMB
+    double mj_wk;
+#endif
 };
 
 static struct INPUT_STRUCT_NAME
@@ -119,6 +122,9 @@ static struct OUTPUT_STRUCT_NAME
     int NgbInt;
     MyLongDouble VelMean[3];
     MyLongDouble VelDisp;
+
+    // new density
+    MyLongDouble Rho;
 #endif
 }
  *DATARESULT_NAME, *DATAOUT_NAME;
@@ -138,6 +144,10 @@ void ags_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, i
     int k; for (k = 0; k < 3; k++) { ASSIGN_ADD(P[i].AGS_VelMean[k], out->VelMean[k], mode); }
     ASSIGN_ADD(P[i].AGS_VelDisp, out->VelDisp, mode);
     ASSIGN_ADD(P[i].AGS_NgbInt, out->NgbInt, mode);
+    ASSIGN_ADD(P[i].AGS_NumNgb, out->Ngb, mode);
+
+    // new density
+    ASSIGN_ADD(P[i].AGS_Density, out->Rho, mode);
 #endif
 }
 
@@ -203,6 +213,12 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);
 
                     out.Ngb += kernel.wk;
+
+#ifdef DM_DMB
+                    kernel.mj_wk = FLT(P[j].Mass * kernel.wk);
+                    out.Rho += kernel.mj_wk;
+#endif
+
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
                     out.AGS_zeta += P[j].Mass * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0); // needs to be here, should include self-contribution
 
@@ -254,6 +270,10 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         int k; for (k = 0; k < 3; k++) { out.VelMean[k] += P[j].Vel[k]; }
                         out.VelDisp += P[j].Vel[0] * P[j].Vel[0] + P[j].Vel[1] * P[j].Vel[1] + P[j].Vel[2] * P[j].Vel[2]; 
                         out.NgbInt++;
+
+                        // trying weighted means (weighted by the kernel)
+                        // int k; for (k = 0; k < 3; k++) { out.VelMean[k] += kernel.wk * P[j].Vel[k]; }
+                        // out.VelDisp += kernel.wk * (P[j].Vel[0] * P[j].Vel[0] + P[j].Vel[1] * P[j].Vel[1] + P[j].Vel[2] * P[j].Vel[2]); 
 #endif
                     }
                 }
@@ -306,7 +326,7 @@ void ags_density(void)
         {
             if(ags_density_isactive(i))
             {
-#if defined(DM_FUZZY) || defined(DM_DMB)
+#if defined(DM_FUZZY) // || defined(DM_DMB) // replaced by new density calculation
                 P[i].AGS_Density = P[i].Mass * PPP[i].NumNgb;
 #endif
                 if(PPP[i].NumNgb > 0)
@@ -581,9 +601,15 @@ void ags_density(void)
                     for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] = P[i].Vel[k]; }
                     P[i].AGS_VelDisp = 0.;
                 } else {
+                    // old straight average
                     for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NgbInt; }
-                    double meanv_mag2 = P[i].AGS_VelMean[0]*P[i].AGS_VelMean[0] + P[i].AGS_VelMean[1]*P[i].AGS_VelMean[1] + P[i].AGS_VelMean[2]*P[i].AGS_VelMean[2];
                     double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NgbInt;
+
+                    // trying new weighted average
+                    // for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NumNgb; }
+                    // double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NumNgb;
+
+                    double meanv_mag2 = P[i].AGS_VelMean[0]*P[i].AGS_VelMean[0] + P[i].AGS_VelMean[1]*P[i].AGS_VelMean[1] + P[i].AGS_VelMean[2]*P[i].AGS_VelMean[2];
                     double new_vel_disp = (1./All.cf_atime) * sqrt(vel_disp - meanv_mag2); // / 1.732; // 1d velocity dispersion
 
                     if ((vel_disp - meanv_mag2) <= 0 && fabs((vel_disp - meanv_mag2) / vel_disp) < 1e-5) {
@@ -597,6 +623,7 @@ void ags_density(void)
                         printf("  original AGS_VelDisp = %.3e\n", P[i].AGS_VelDisp);
                         printf("  AVS_VelMean = [%.3e, %.3e, %.3e]\n", P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2]);
                         printf("  AGS_NgbInt = %d\n", P[i].AGS_NgbInt);
+                        printf("  AGS_NumNgb = %d\n", P[i].AGS_NumNgb);
                     }
 
                     P[i].AGS_VelDisp = new_vel_disp;
