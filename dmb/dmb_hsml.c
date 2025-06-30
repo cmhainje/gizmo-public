@@ -175,7 +175,7 @@ void dmb_calc(void)
             P[i].DMB_DtInternalEnergy = 0;
             int k; for (k = 0; k < 3; k++) {
                 P[i].DMB_V[k] = 0;
-                P[i].DMB_Accel[3] = 0;
+                P[i].DMB_Accel[k] = 0;
             }
 
         }
