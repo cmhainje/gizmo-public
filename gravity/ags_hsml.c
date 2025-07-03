@@ -215,8 +215,9 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     out.Ngb += kernel.wk;
 
 #ifdef DM_DMB
-                    kernel.mj_wk = FLT(P[j].Mass * kernel.wk);
-                    out.Rho += kernel.mj_wk;
+                    // kernel.mj_wk = FLT(P[j].Mass * kernel.wk);
+                    // out.Rho += kernel.mj_wk;
+                    out.Rho += P[j].Mass;
 #endif
 
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
@@ -600,7 +601,11 @@ void ags_density(void)
                     // handle zero neighbors
                     for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] = P[i].Vel[k]; }
                     P[i].AGS_VelDisp = 0.;
+                    P[i].AGS_Density = 0.;
                 } else {
+                    double vol = 4.0 * M_PI / 3.0 * P[i].AGS_Hsml * P[i].AGS_Hsml * P[i].AGS_Hsml;
+                    P[i].AGS_Density = fmax(P[i].AGS_Density - P[i].Mass, P[i].Mass) / vol;
+
                     // old straight average
                     for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NgbInt; }
                     double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NgbInt;

@@ -132,13 +132,16 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Mass <= 0) continue;
                 double wgt = 1.0;
-                int k; for (k = 0; k < 3; k++) { out.V[k] += wgt * P[j].Vel[k]; }
+                int k;
+                // for (k = 0; k < 3; k++) { out.V[k] += wgt * P[j].Vel[k]; }
                 if (P[j].Type == 0) {
+                    for (k = 0; k < 3; k++) { out.V[k] += wgt * P[j].Vel[k]; }
                     out.Density += wgt * SphP[j].Density;
                     out.Temp += wgt * P[j].DMB_MyTemp;
                     out.GasMass += wgt * P[j].DMB_MyMass;
                 }
                 else if (P[j].Type == 1) {
+                    for (k = 0; k < 3; k++) { out.V[k] += wgt * P[j].AGS_VelMean[k]; }
                     out.Density += wgt * P[j].AGS_Density;
                     out.Temp += wgt * P[j].DMB_MyTemp;
                 }
