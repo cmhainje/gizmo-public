@@ -76,67 +76,69 @@ double script_B(double w, double kT_over_m)
     return out;
 }
 
-/*! Computes the momentum exchange rate (B -> DM) per unit volume (which is filled into `out`).
- *  dV is the dark matter velocity minus the baryon velocity (in that order)
- *  rho_DM, kT_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
- *  rho_B, kT_B, m_B are the same for baryonic matter
+/*! Computes the momentum exchange rate (2 -> 1) per unit volume (which is filled into `out`).
+ *  dV is the velocity of species 1 minus species 2
+ *  rho_1, kT_1, m_1 are the mass density, temperature, and particle mass of species 1
+ *  rho_2, kT_2, m_2 are the same for species 2
  *
  *  Units:
  *    dV: velocity, physical, cgs (cm/s)
  *    rho_*: density, physical, cgs
- *    m_*: grams (physical)
  *    kT_*: ergs
+ *    m_*: grams (physical)
  */
-void mom_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, double rho_B, double kT_B, double m_B, double out[3])
+void mom_exch_rate(double dV[3], double rho_1, double kT_1, double m_1, double rho_2, double kT_2, double m_2, double out[3])
 {
     double dV_mag = sqrt(dV[0]*dV[0] + dV[1]*dV[1] + dV[2]*dV[2]);
-    double v_th_2 = kT_B / m_B + kT_DM / m_DM;
+    double v_th_2 = kT_2 / m_2 + kT_1 / m_1;
     double A = script_A(dV_mag, v_th_2);
-    double coeff = -(rho_DM * rho_B) / (m_DM + m_B) * A;
+    double coeff = -(rho_1 * rho_2) / (m_1 + m_2) * A;
 
     int i;
     bool nan_detected = false;
     for (i = 0; i < 3; i++) { out[i] = coeff * dV[i]; nan_detected = nan_detected || isnan(out[i]); }
     if (nan_detected) {
         printf("mom_exch_rate returning NaN. inputs were:");
-        printf("  rho_DM = %f\n", rho_DM);
-        printf("  kT_DM = %f\n", kT_DM);
-        printf("  m_DM = %f\n", m_DM);
-        printf("  rho_B = %f\n", rho_B);
-        printf("  kT_B = %f\n", kT_B);
-        printf("  m_B = %f\n", m_B);
+        printf("  rho_1 = %e\n", rho_1);
+        printf("  kT_1  = %e\n", kT_1);
+        printf("  m_1   = %e\n", m_1);
+        printf("  rho_2 = %e\n", rho_2);
+        printf("  kT_2  = %e\n", kT_2);
+        printf("  m_2   = %e\n", m_2);
     }
 }
 
-/*! Computes the heat exchange rate (B -> DM) per unit volume.
- *  dV is the dark matter velocity minus the baryon velocity (in that order)
- *  rho_DM, kT_DM, m_DM are the mass density, temperature, and particle mass of the dark matter
- *  rho_B, kT_B, m_B are the same for baryonic matter
+/*! Computes the heat exchange rate (2 -> 1) per unit volume.
+ *  dV is V_1 - V_2: mean velocity of species 1 minus 2
+ *  rho_1, kT_1, m_1 are the mass density, temperature, and particle mass of species 1
+ *  rho_2, kT_2, m_2 are the same for species 2
+ *  correction is 3 (kT_DM / m_DM) / N_DM_neighbors
  *
  *  Units:
  *    dV: velocity, physical, cgs (cm/s)
  *    rho_*: density, physical, cgs
- *    m_*: grams (physical)
  *    kT_*: ergs
+ *    m_*: grams (physical)
+ *    correction: squared velocity, physical, cgs
  */
-double heat_exch_rate(double dV[3], double rho_DM, double kT_DM, double m_DM, double rho_B, double kT_B, double m_B)
+double heat_exch_rate(double dV[3], double rho_1, double kT_1, double m_1, double rho_2, double kT_2, double m_2, double correction)
 {
     double dV_mag = sqrt(dV[0]*dV[0] + dV[1]*dV[1] + dV[2]*dV[2]);
-    double v_th_2 = kT_B / m_B + kT_DM / m_DM;
+    double v_th_2 = kT_2 / m_2 + kT_1 / m_1;
     double A = script_A(dV_mag, v_th_2);
     double B = script_B(dV_mag, v_th_2);
-    double coeff = (rho_DM * rho_B) / (m_DM + m_B) / v_th_2;
-    double out = coeff * (B * (kT_B - kT_DM) / (m_DM + m_B) + kT_DM / m_DM * A * dV_mag * dV_mag);
+    double coeff = (rho_1 * rho_2) / (m_1 + m_2) / v_th_2;
+    double out = coeff * (B * (kT_2 - kT_1) / (m_1 + m_2) + kT_1 / m_1 * A * fmax(dV_mag * dV_mag - correction, 0.0));
     if (v_th_2 == 0) out = 0;
 
     if (isnan(out)) {
         printf("heat_exch_rate returning NaN. inputs were:\n");
-        printf("  rho_DM = %e\n", rho_DM);
-        printf("  kT_DM = %e\n", kT_DM);
-        printf("  m_DM = %e\n", m_DM);
-        printf("  rho_B = %e\n", rho_B);
-        printf("  kT_B = %e\n", kT_B);
-        printf("  m_B = %e\n", m_B);
+        printf("  rho_1 = %e\n", rho_1);
+        printf("  kT_1  = %e\n", kT_1);
+        printf("  m_1   = %e\n", m_1);
+        printf("  rho_2 = %e\n", rho_2);
+        printf("  kT_2  = %e\n", kT_2);
+        printf("  m_2   = %e\n", m_2);
     }
 
     return out;
@@ -249,7 +251,8 @@ void print_everything(int i) {
 void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
     int k;
 
-    // compute dV := v_DM (self) - v_gas (other) in [cgs]
+    // OLD: compute dV := v_DM (self) - v_gas (other) in [cgs]
+    // compute dV := v_self - v_other in [cgs]
     double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].AGS_VelMean[k] - P[i].DMB_V[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
 
     // densities
@@ -268,8 +271,10 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
 
     // compute momentum, internal energy exchange rates per volume
     mom_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass, P[i].DMB_MomExch);
-    // for (k = 0; k < 3; k++) { P[i].DMB_MomExch[k] = 0.; }
-    P[i].DMB_HeatExch = heat_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass);
+
+    // double corr = 3. * kT_DM / All.DMB_DarkMatterMass / P[i].AGS_NgbInt;
+    double corr = 0.0;
+    P[i].DMB_HeatExch = heat_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_GasMass, corr);
 
     // translate exchange rates into accel and d(spec energy)/dt in code units
     for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_DM) / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS) * All.cf_atime; }
@@ -284,13 +289,19 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
 
     double accel_mag = sqrt(accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2]);
     if ((accel_mag > 1e10) || (abs(*dUdt) > 1e10)) {
-        printf("Crazy behavior on ID %d (type %d):\n", i, P[i].Type);
+        printf("Crazy behavior on ID %d (type %d):\n", P[i].ID, P[i].Type);
         print_everything(i);
+
+        savepositions(999);
+        endrun(1234);
     }
 
     if ((GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) > 0) && (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) < 1e-9)) {
-        printf("Tiny timestep for ID %d (type %d):\n", i, P[i].Type);
+        printf("Tiny timestep for ID %d (type %d):\n", P[i].ID, P[i].Type);
         print_everything(i);
+
+        savepositions(999);
+        endrun(1234);
     }
 
 
@@ -307,8 +318,9 @@ void compute_exch_rates_DM(int i, double accel[3], double *dUdt) {
 void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
     int k;
 
-    // compute dV := v_DM (other) - v_self (gas) in [cgs]
-    double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].DMB_V[k] - P[i].Vel[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
+    // OLD: compute dV := v_DM (other) - v_self (gas) in [cgs]
+    // compute dV := v_self - v_other in [cgs]
+    double dV[3]; for (k = 0; k < 3; k++) { dV[k] = (P[i].Vel[k] - P[i].DMB_V[k]) / All.cf_atime * UNIT_VEL_IN_CGS; }
 
     // densities [g cm^-3]
     double rho_gas = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
@@ -324,19 +336,13 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
     double kT_gas = P[i].DMB_MyTemp;
     double kT_DM = P[i].DMB_Temperature;
 
-    // compute B -> DM momentum, internal energy exchange rates per volume
-    double Pdot_DM[3]; mom_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_MyMass, Pdot_DM);
-    double Qdot_DM = heat_exch_rate(dV, rho_DM, kT_DM, All.DMB_DarkMatterMass, rho_gas, kT_gas, P[i].DMB_MyMass);
+    // compute energy exchange rates per volume
+    mom_exch_rate(dV, rho_gas, kT_gas, P[i].DMB_MyMass, rho_DM, kT_DM, All.DMB_DarkMatterMass, P[i].DMB_MomExch);
 
-    // convert B -> DM into DM -> B
-    for (k = 0; k < 3; k++) { P[i].DMB_MomExch[k] = -1 * Pdot_DM[k]; }
-    // for (k = 0; k < 3; k++) { P[i].DMB_MomExch[k] = 0.; }
-    P[i].DMB_HeatExch = (
-        P[i].DMB_MomExch[0] * dV[0]
-        + P[i].DMB_MomExch[1] * dV[1]
-        + P[i].DMB_MomExch[2] * dV[2]
-        - Qdot_DM
-    );
+    // double corr = 3. * kT_DM / All.DMB_DarkMatterMass / P[i].DMB_NgbInt;
+    double corr = 0.0;
+    P[i].DMB_HeatExch = heat_exch_rate(dV, rho_gas, kT_gas, P[i].DMB_MyMass, rho_DM, kT_DM, All.DMB_DarkMatterMass, corr);
+
 
     // translate exchange rates into accel and d(spec energy)/dt in code units
     for (k = 0; k < 3; k++) { accel[k] = (P[i].DMB_MomExch[k] / rho_gas) / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS) * All.cf_atime; }
@@ -351,13 +357,19 @@ void compute_exch_rates_gas(int i, double accel[3], double *dUdt) {
 
     double accel_mag = sqrt(accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2]);
     if ((accel_mag > 1e10) || (abs(*dUdt) > 1e10)) {
-        printf("Crazy behavior on ID %d (type %d):\n", i, P[i].Type);
+        printf("Crazy behavior on ID %d (type %d):\n", P[i].ID, P[i].Type);
         print_everything(i);
+
+        savepositions(999);
+        endrun(1234);
     }
 
     if ((GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) > 0) && (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) < 1e-9)) {
-        printf("Tiny timestep for ID %d (type %d):\n", i, P[i].Type);
+        printf("Tiny timestep for ID %d (type %d):\n", P[i].ID, P[i].Type);
         print_everything(i);
+
+        savepositions(999);
+        endrun(1234);
     }
 
     // check for NaNs

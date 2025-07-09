@@ -597,7 +597,7 @@ void ags_density(void)
 #ifdef DM_DMB
                 // compute velocity dispersion
                 int k;
-                if (P[i].AGS_NgbInt == 0) {
+                if (P[i].AGS_NgbInt <= 1) {
                     // handle zero neighbors
                     for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] = P[i].Vel[k]; }
                     P[i].AGS_VelDisp = 0.;
@@ -606,9 +606,13 @@ void ags_density(void)
                     double vol = 4.0 * M_PI / 3.0 * P[i].AGS_Hsml * P[i].AGS_Hsml * P[i].AGS_Hsml;
                     P[i].AGS_Density = fmax(P[i].AGS_Density - P[i].Mass, P[i].Mass) / vol;
 
-                    // old straight average
-                    for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NgbInt; }
-                    double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NgbInt;
+                    // old straight average, excluding this particle
+                    // for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NgbInt; }
+                    // double vel_disp = P[i].AGS_VelDisp / P[i].AGS_NgbInt;
+
+                    // trying new average: include this particle
+                    for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] = (P[i].AGS_VelMean[k] + P[i].Vel[k]) / (1.0 + P[i].AGS_NgbInt); }
+                    double vel_disp = (P[i].AGS_VelDisp + (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2])) / ((double) P[i].AGS_NgbInt + 1.0);
 
                     // trying new weighted average
                     // for (k = 0; k < 3; k++) { P[i].AGS_VelMean[k] /= P[i].AGS_NumNgb; }
@@ -617,10 +621,14 @@ void ags_density(void)
                     double meanv_mag2 = P[i].AGS_VelMean[0]*P[i].AGS_VelMean[0] + P[i].AGS_VelMean[1]*P[i].AGS_VelMean[1] + P[i].AGS_VelMean[2]*P[i].AGS_VelMean[2];
                     double new_vel_disp = (1./All.cf_atime) * sqrt(vel_disp - meanv_mag2); // / 1.732; // 1d velocity dispersion
 
-                    if ((vel_disp - meanv_mag2) <= 0 && fabs((vel_disp - meanv_mag2) / vel_disp) < 1e-5) {
+                    // bessel's correction
+                    new_vel_disp *= sqrt( ((double) P[i].AGS_NgbInt + 1.0) / ((double) P[i].AGS_NgbInt) );
+
+                    if ((vel_disp - meanv_mag2) <= 0 && fabs((vel_disp - meanv_mag2) / vel_disp) < 1e-3) {
                         new_vel_disp = 0.0; // handle the case where this is only negative bc of floating point problems
                     }
 
+                    
                     if (isnan(new_vel_disp)) {
                         printf("AGS_VelDisp is NaN\n");
                         printf("  veldisp = %.3e\n", vel_disp);
@@ -628,7 +636,7 @@ void ags_density(void)
                         printf("  original AGS_VelDisp = %.3e\n", P[i].AGS_VelDisp);
                         printf("  AVS_VelMean = [%.3e, %.3e, %.3e]\n", P[i].AGS_VelMean[0], P[i].AGS_VelMean[1], P[i].AGS_VelMean[2]);
                         printf("  AGS_NgbInt = %d\n", P[i].AGS_NgbInt);
-                        printf("  AGS_NumNgb = %d\n", P[i].AGS_NumNgb);
+                        printf("  AGS_NumNgb = %f\n", P[i].AGS_NumNgb);
                     }
 
                     P[i].AGS_VelDisp = new_vel_disp;
