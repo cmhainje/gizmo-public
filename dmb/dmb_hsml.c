@@ -156,6 +156,27 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
     return 0;
 }
 
+/* generates a random number from the Normal distribution using the polar Box-Muller transform */
+double random_normal() {
+    double u = 0.0, v = 0.0, s = 0.0;
+    while ((s == 0.0) || (s >= 1.0)) {
+        u = gsl_rng_uniform(random_generator) * 2.0 - 1.0; // from [-1, +1]
+        v = gsl_rng_uniform(random_generator) * 2.0 - 1.0; // from [-1, +1]
+        s = u*u + v*v;
+    }
+    return u * sqrt(-2.0 * log(s) / s);
+}
+
+/* generates a random unit-length 3vector */
+void random_unit_vector(double out[3]) {
+    double cos_theta = 2.0 * gsl_rng_uniform(random_generator) - 1.0;
+    double sin_theta = sqrt(1 - cos_theta * cos_theta);
+    double phi = gsl_rng_uniform(random_generator) * 2.0 * M_PI;
+    out[0] = sin_theta * cos(phi);
+    out[1] = sin_theta * sin(phi);
+    out[2] = cos_theta;
+}
+
 
 void dmb_calc(void)
 {
@@ -339,13 +360,14 @@ void dmb_calc(void)
     {
         if(dmb_isactive(i))
         {
+            int k;
             if (P[i].DMB_NumNgb > 0) {
-                int k; for (k = 0; k < 3; k++) { P[i].DMB_V[k] /= P[i].DMB_NumNgb; }
+                for (k = 0; k < 3; k++) { P[i].DMB_V[k] /= P[i].DMB_NumNgb; }
                 P[i].DMB_Density /= P[i].DMB_NumNgb;
                 P[i].DMB_Temperature /= P[i].DMB_NumNgb;
                 if (P[i].Type == 1) { P[i].DMB_GasMass /= P[i].DMB_NumNgb; }
             } else {
-                int k; for (k = 0; k < 3; k++) { P[i].DMB_V[k] = 0; }
+                for (k = 0; k < 3; k++) { P[i].DMB_V[k] = 0; }
                 P[i].DMB_Density = 0;
                 P[i].DMB_Temperature = 0;
                 if (P[i].Type == 1) { P[i].DMB_GasMass = 0; }
@@ -354,21 +376,41 @@ void dmb_calc(void)
             // now all the ingredients are known -> compute and apply exchange rates!
             compute_exch_rates(i);
 
-            int k;
             if (P[i].Type == 0) {
                 for (k = 0; k < 3; k++) { P[i].GravAccel[k] += P[i].DMB_Accel[k]; }
                 SphP[i].DtInternalEnergy += P[i].DMB_DtInternalEnergy;
             } else {
-                double dt_veldisp_ratio = 0.0;
-                // trying something new Re: DM velocity dispersion!
-                if (abs(P[i].AGS_VelDisp) > 0) {
-                    dt_veldisp_ratio = P[i].DMB_DtInternalEnergy / (P[i].AGS_VelDisp * P[i].AGS_VelDisp);
-                }
-                for (k = 0; k < 3; k++) {
-                    P[i].GravAccel[k] += P[i].DMB_Accel[k] + (P[i].Vel[k] - P[i].AGS_VelMean[k]) * dt_veldisp_ratio;
+                // for (k = 0; k < 3; k++) { P[i].GravAccel[k] += P[i].DMB_Accel[k]; }
+
+                // trying something new!
+                // for DM, do scatterings instead of exchange rates
+                double m_chi = All.DMB_DarkMatterMass;
+                double m_b   = P[i].DMB_GasMass;
+                double M = m_chi + m_b;
+
+                // draw a random velocity from the local baryon MB distribution
+                double disp = sqrt(P[i].DMB_Temperature / m_b) / UNIT_VEL_IN_CGS; // code[vel]
+                double v_b[3]; for (k = 0; k < 3; k++) { v_b[k] = P[i].DMB_V[k] + disp * random_normal(); }
+
+                // compute the probability of scattering
+                double dv[3]; for (k = 0; k < 3; k++) { dv[k] = P[i].Vel[k] / All.cf_atime - v_b[k]; }
+                double dvmag = sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]); // code[vel]
+                double rho = P[i].DMB_Density * All.cf_a3inv; // code[dens]
+                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); // code[time] = code[len] / code[vel]
+                // units: code[dens] * code[vel] * code[time] = code[dens] * code[len] = code[surfden]
+                // note that cross_section is in cm^2 and m_b is in g
+                // so code[surfden] * UNIT_SURFDEN * cm^2 / m_b = dimensionless
+                double prob = rho / m_b * dmb_cross_section(dvmag * UNIT_VEL_IN_CGS) * dvmag * dt * UNIT_SURFDEN_IN_CGS;
+
+                // determine whether to scatter
+                double r = gsl_rng_uniform(random_generator);
+                if (r < prob) {
+                    double ehat[3]; random_unit_vector(ehat);
+                    for (k = 0; k < 3; k++) {
+                        P[i].Vel[k] = m_chi / M * P[i].Vel[k] + m_b / M * (v_b[k] + dvmag * ehat[k]);
+                    }
                 }
             }
-
         }
     }
 
