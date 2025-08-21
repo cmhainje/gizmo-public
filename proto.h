@@ -968,6 +968,7 @@ double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, 
 
 
 #ifdef DM_DMB
+double dmb_cross_section(double velocity);
 void dmb_calc(void);
 // void dmb_density(void);
 void dmb_setup_smoothinglengths(void);
