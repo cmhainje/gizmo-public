@@ -411,6 +411,8 @@ void dmb_init() {
 
         int k; for (k = 0; k < 3; k++) {
             P[i].DMB_MomExch[k] = 0;
+            P[i].DMB_ActualMomChange[k] = 0;
+            P[i].DMB_ExpectedMomChange[k] = 0;
         }
 
         P[i].DMB_MomentumExchanged = 0;

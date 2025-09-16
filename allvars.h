@@ -2703,6 +2703,9 @@ extern ALIGN(32) struct particle_data
 
     MyDouble DMB_MomentumExchanged; /*!< cumulative momentum exchanged */
     MyDouble DMB_EnergyExchanged;   /*!< cumulative energy exchanged */
+
+    MyDouble DMB_ActualMomChange[3];   /*!< cumulative energy exchanged */
+    MyDouble DMB_ExpectedMomChange[3];   /*!< cumulative energy exchanged */
 #endif
 
 #if defined(SUBFIND)
@@ -3623,6 +3626,9 @@ enum iofields
 
   IO_DMB_MOMEXCHED,
   IO_DMB_HEATEXCHED,
+
+  IO_DMB_EXPMOMCHANGE,
+  IO_DMB_ACTMOMCHANGE,
   // IO_DMB_EGYERR,
 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */

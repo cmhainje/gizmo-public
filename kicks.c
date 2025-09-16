@@ -420,6 +420,12 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         P[i].DMB_MomentumExchanged += sqrt(dp_dmb[0]*dp_dmb[0] + dp_dmb[1]*dp_dmb[1] + dp_dmb[2]*dp_dmb[2]);
         P[i].DMB_EnergyExchanged += P[i].DMB_DtInternalEnergy * dt_entr;
 
+        if (P[i].Type == 1) { 
+            for (k = 0; k < 3; k++) {
+                P[i].DMB_ExpectedMomChange[k] += P[i].Mass * P[i].DMB_Accel[k] * dt_gravkick;
+            }
+        }
+
         // P[i].DMB_LastEnergyExchanged = P[i].DMB_DtInternalEnergy * dt_entr;
         // P[i].DMB_EnergyExchanged += P[i].DMB_LastEnergyExchanged;
 #endif

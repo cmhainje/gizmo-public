@@ -406,8 +406,11 @@ void dmb_calc(void)
                 double r = gsl_rng_uniform(random_generator);
                 if (r < prob) {
                     double ehat[3]; random_unit_vector(ehat);
+                    double newv[3];
                     for (k = 0; k < 3; k++) {
-                        P[i].Vel[k] = m_chi / M * P[i].Vel[k] + m_b / M * (v_b[k] + dvmag * ehat[k]);
+                        newv[k] = m_chi / M * P[i].Vel[k] + m_b / M * (v_b[k] + dvmag * ehat[k]);
+                        P[i].DMB_ActualMomChange[k] += P[i].Mass * (newv[k] - P[i].Vel[k]);
+                        P[i].Vel[k] = newv[k];
                     }
                 }
             }

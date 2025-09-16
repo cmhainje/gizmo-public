@@ -1969,6 +1969,34 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 // #endif
 //             break;
 
+        case IO_DMB_EXPMOMCHANGE:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    for(k = 0; k < 3; k++) {
+                        fp[k] = (MyOutputFloat) P[pindex].DMB_ExpectedMomChange[k];
+                    }
+                    fp += 3;
+                    n++;
+                }
+            }
+#endif
+            break;
+
+        case IO_DMB_ACTMOMCHANGE:
+#ifdef DM_DMB
+            for(n = 0; n < pc; pindex++) {
+                if(P[pindex].Type == type) {
+                    for(k = 0; k < 3; k++) {
+                        fp[k] = (MyOutputFloat) P[pindex].DMB_ActualMomChange[k];
+                    }
+                    fp += 3;
+                    n++;
+                }
+            }
+#endif
+            break;
+
 
 
         case IO_LASTENTRY:
@@ -2013,6 +2041,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_DMB_AGS_VELMEAN:
         case IO_DMB_V:
         case IO_DMB_MOMEXCH:
+        case IO_DMB_EXPMOMCHANGE:
+        case IO_DMB_ACTMOMCHANGE:
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
@@ -2354,6 +2384,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_DMB_AGS_VELMEAN:
         case IO_DMB_V:
         case IO_DMB_MOMEXCH:
+        case IO_DMB_EXPMOMCHANGE:
+        case IO_DMB_ACTMOMCHANGE:
             values = 3;
             break;
 
@@ -2819,6 +2851,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_DMB_HEATEXCH:
         case IO_DMB_MOMEXCHED:
         case IO_DMB_HEATEXCHED:
+        case IO_DMB_EXPMOMCHANGE:
+        case IO_DMB_ACTMOMCHANGE:
         // case IO_DMB_EGYERR:
             for(i = 0; i < 6; i++) {
                 if (i < 2 && ngas > 0 && header.npart[1] > 0) {
@@ -3452,6 +3486,8 @@ int blockpresent(enum iofields blocknr)
         case IO_DMB_HEATEXCH:
         case IO_DMB_MOMEXCHED:
         case IO_DMB_HEATEXCHED:
+        case IO_DMB_EXPMOMCHANGE:
+        case IO_DMB_ACTMOMCHANGE:
         // case IO_DMB_EGYERR:
 #ifdef DM_DMB
             return 1;
@@ -3920,6 +3956,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_DMB_HEATEXCHED:
             strncpy(label, "dbHT", 4);
             break;
+        case IO_DMB_EXPMOMCHANGE:
+            strncpy(label, "dbEP", 4);
+            break;
+        case IO_DMB_ACTMOMCHANGE:
+            strncpy(label, "dbAP", 4);
+            break;
         // case IO_DMB_EGYERR:
         //     strncpy(label, "dbEE", 4);
         //     break;
@@ -4381,6 +4423,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_DMB_HEATEXCHED:
             strcpy(buf, "DMB_HeatExchanged");
+            break;
+        case IO_DMB_EXPMOMCHANGE:
+            strcpy(buf, "DMB_ExpectedMomChange");
+            break;
+        case IO_DMB_ACTMOMCHANGE:
+            strcpy(buf, "DMB_ActualMomChange");
             break;
         // case IO_DMB_EGYERR:
         //     strcpy(buf, "DMB_EnergyError");
