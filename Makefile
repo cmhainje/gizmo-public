@@ -102,6 +102,38 @@ FINCL =
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Docker")
+CC        = mpicc
+CXX       = mpic++
+FC        = mpif90 -Wno-main
+# OPTIMIZE  = -g -O0 -openmp
+OPTIMIZE  = -O3 -openmp
+GSL_INCL  = -I/usr/include
+GSL_LIBS  = -L/aarch64-linux-gnu -lgsl -lgslcblas -lm 
+FFTW_INCL = -I/usr/include
+FFTW_LIBS = -L/aarch64-linux-gnu -lfftw3
+HDF5INCL  = -I/usr/include/hdf5/openmpi -DH5_USE_16_API
+HDF5LIB   = -L/usr/lib/aarch64-linux-gnu/hdf5/openmpi -L/usr/lib/aarch64-linux-gnu/openmpi/lib -lhdf5 -lmpi -lz
+MPICHLIB  =
+endif
+
+ifeq ($(SYSTYPE),"Greene")
+CC        = mpicc
+CXX       = mpic++
+FC        = mpif90 -nofor-main
+OPTIMIZE  = -O3 -parallel -qopenmp -diag-disable=10441
+GSL_INCL  = -I/share/apps/gsl/2.6/intel/include
+GSL_LIBS  = -L/share/apps/gsl/2.6/intel/lib
+FFTW_INCL = -I/share/apps/fftw/3.3.9/openmpi/intel/include
+FFTW_LIBS = -L/share/apps/fftw/3.3.9/openmpi/intel/lib
+HDF5INCL  = -I/share/apps/hdf5/1.12.0/openmpi/intel/include -DH5_USE_16_API
+HDF5LIB   = -L/share/apps/hdf5/1.12.0/openmpi/intel/lib -lhdf5 -lz
+MPICHLIB  =
+# modules to load:
+# module load intel/19.1.2 fftw/openmpi/intel/3.3.9 gsl/intel/2.6 hdf5/openmpi/intel/1.12.0
+# module swap intel/19.1.2 intel/2023.1.0
+endif
+
 ifeq ($(SYSTYPE),"Stampede")
 CC       =  mpicc
 CXX      =  mpic++
@@ -1330,7 +1362,6 @@ HYDRO_OBJS = 	hydro/hydro_toplevel.o \
 
 EOSCOOL_OBJS =  cooling/cooling.o \
 				cooling/grackle.o \
-				cooling/simple_chemistry.o \
 				eos/eos.o \
 				eos/hydrogen_molecule.o \
 				eos/cosmic_ray_fluid/cosmic_ray_alfven.o \
@@ -1339,7 +1370,8 @@ EOSCOOL_OBJS =  cooling/cooling.o \
 				solids/grain_physics.o \
 				solids/ism_dust_chemistry.o \
 				nuclear/nuclear_network_solver.o \
-				nuclear/nuclear_network.o 
+				nuclear/nuclear_network.o
+# cooling/simple_chemistry.o \
 
 STARFORM_OBJS = galaxy_sf/sfr_eff.o \
                 galaxy_sf/stellar_evolution.o \
@@ -1378,7 +1410,9 @@ FOF_OBJS =	structure/fof.o \
 
 MISC_OBJS = sidm/cbe_integrator.o \
 			sidm/dm_fuzzy.o \
-			sidm/sidm_core.o
+			sidm/sidm_core.o \
+			dmb/dmb_core.o \
+			dmb/dmb_hsml.o
 
 ## name of executable and optimizations
 EXEC   = GIZMO

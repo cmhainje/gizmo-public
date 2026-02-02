@@ -1012,6 +1012,16 @@ double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, 
 #endif
 #endif
 
+#ifdef DM_DMB
+double dmb_cross_section(double v);
+double dmb_script_A(double w, double disp);
+double dmb_script_B(double w, double disp);
+double dmb_overlap_lookup(double delta, double h_ratio);
+void dmb_init_overlap_table(void);
+void dmb_init(void);
+void dmb_calc(void);
+#endif // DM_DMB
+
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
 void special_rt_feedback_injection(void);
 #endif

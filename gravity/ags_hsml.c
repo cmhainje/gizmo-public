@@ -59,6 +59,10 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 #ifdef DM_SIDM
     if((1 << particle_type_primary) & (DM_SIDM)) {return DM_SIDM;} /* SIDM particles see other SIDM particles, regardless of type/mass */
 #endif
+
+#ifdef DM_DMB
+    if (particle_type_primary == 1) return 2;
+#endif
     
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     return (1 << particle_type_primary); /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */

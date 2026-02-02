@@ -393,3 +393,7 @@ int maxThreads = 1;
 #if defined(DM_SIDM)
 MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
+
+#ifdef DM_DMB
+MyDouble DMB_OverlapTable[DMB_OVERLAP_TABLE_LENGTH];
+#endif // DM_DMB

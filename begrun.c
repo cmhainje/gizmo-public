@@ -193,7 +193,7 @@ void begrun(void)
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
 
-  gsl_rng_set(random_generator, 42 + ThisTask);	/* start-up seed */
+  gsl_rng_set(random_generator, 42 + All.RandomSeed + ThisTask);	/* start-up seed */
 
   set_random_numbers();
 
@@ -226,6 +226,10 @@ void begrun(void)
 #if defined(DM_SIDM)
     init_geofactor_table();
 #endif
+
+#ifdef DM_DMB
+    dmb_init_overlap_table();
+#endif // DM_DMB
 
     
   All.TimeLastRestartFile = CPUThisRun;
@@ -1199,6 +1203,20 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 #endif
+
+#ifdef DM_DMB
+        strcpy(tag[nt], "DMB_DarkMatterMass");
+        addr[nt] = &All.DMB_DarkMatterMass;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "DMB_InteractionCrossSection");
+        addr[nt] = &All.DMB_InteractionCrossSection;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "DMB_InteractionPowerScale");
+        addr[nt] = &All.DMB_InteractionPowerScale;
+        id[nt++] = REAL;
+#endif // DM_DMB
 
 
         strcpy(tag[nt], "MinGasHsmlFractional");

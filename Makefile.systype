@@ -6,7 +6,9 @@
 #
 #############
 
-SYSTYPE="Frontera"
+SYSTYPE="Docker"
+#SYSTYPE="Greene"
+#SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Bridges2"
 #SYSTYPE="Anvil"

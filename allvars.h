@@ -1476,6 +1476,7 @@ typedef MyDouble MyBigFloat;
 #define CPU_DUMMY09       56
 #define CPU_DUMMY10       57
 
+
 #define CPU_PARTS          58  /* this gives the number of parts above (must be last) */
 
 #define CPU_STRING_LEN 120
@@ -1941,6 +1942,13 @@ extern struct global_data_all_processes
     MyDouble DM_KickPerCollision;  /*!< for exo-thermic DM reactions, this determines the energy gain 'per event': kick in code units (equivalent to specific energy) associated 'per event' */
     MyDouble DM_InteractionVelocityScale; /*!< scale above which the scattering becomes velocity-dependent */
 #endif
+
+#ifdef DM_DMB
+    MyDouble DMB_InteractionCrossSection;  /*!< dark matter-baryon cross-section in [cm^2]*/
+    MyDouble DMB_DarkMatterMass;           /*!< dark matter particle mass in [g] */
+    MyDouble DMB_InteractionPowerScale;    /*!< for cross sections of form sigma_0 * (v/c)^n, this is `n` */
+#endif // DM_DMB
+  int RandomSeed;
 
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
   int MaxPartGas;		/*!< This gives the maxmimum number of gas cells that can be stored on one processor. */
@@ -2776,6 +2784,14 @@ extern ALIGN(32) struct particle_data
     long unsigned int NInteractions; /*!< Total number of interactions */
 #endif
 
+#ifdef DM_DMB
+    double DMB_dtime;  /*!< timestep used if DM-b interaction probabilities greater than 0.2 are found */
+    double DMB_kick[3];
+    double DMB_probtotal;
+    long unsigned int DMB_NumScatters;
+    long unsigned int DMB_NumNeighbors;
+#endif // DM_DMB
+
 #if defined(SUBFIND)
     int GrNr;
     int SubNr;
@@ -3304,6 +3320,13 @@ extern struct gas_cell_data
   MyDouble TD_DynDiffCoeff_error_default;
 #endif
 #endif
+
+#ifdef DM_DMB
+  MyDouble DMB_Temperature;       /*!< temperature [erg] */
+  MyDouble DMB_MolecularWeight;   /*!< mean molecular weight [g] */
+  MyDouble DMB_Accel[3];          /*!< mean acceleration due to DM-b interactions */
+  MyDouble DMB_DtInternalEnergy;  /*!< heating rate due to DM-b interactions */
+#endif // DM_DMB
 
 }
   *SphP,				/*!< holds gas cell data on local processor */
@@ -3894,5 +3917,12 @@ extern gsl_rng* StRng; // random number generator key
 #define GEOFACTOR_TABLE_LENGTH 1000    /*!< length of the table used for the geometric factor spline */
 extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
+
+#ifdef DM_DMB
+#define DMB_OVERLAP_NUM_H_RATIO 100
+#define DMB_OVERLAP_NUM_DELTA 100
+#define DMB_OVERLAP_TABLE_LENGTH DMB_OVERLAP_NUM_H_RATIO * DMB_OVERLAP_NUM_DELTA
+extern MyDouble DMB_OverlapTable[DMB_OVERLAP_TABLE_LENGTH];
+#endif // DM_DMB
 
 #endif  /* ALLVARS_H  - please do not put anything below this line */

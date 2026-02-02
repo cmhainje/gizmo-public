@@ -123,6 +123,9 @@ void compute_additional_forces_for_all_particles(void)
 #ifdef GRAIN_FLUID
     apply_grain_dragforce(); /* if we are solving a coupled set of grains via aerodynamic drag, this is where their acceleration should be calculated */
 #endif
+#ifdef DM_DMB
+    dmb_calc();
+#endif
 }
 
 

@@ -4682,6 +4682,15 @@ void write_header_attributes_in_hdf5(hid_t handle)
 #endif
 #endif
 
+#ifdef DM_DMB
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "DMB_DarkMatterMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.DMB_DarkMatterMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "DMB_InteractionCrossSection", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.DMB_InteractionCrossSection); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "DMB_InteractionPowerScale", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.DMB_InteractionPowerScale); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif // DM_DMB
+
 #ifdef DM_SCALARFIELD_SCREENING
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "DM_ScalarBeta", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.ScalarBeta); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);

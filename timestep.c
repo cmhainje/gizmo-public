@@ -932,6 +932,17 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
+#ifdef DM_DMB
+    /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
+    if (
+        (P[p].Type == 1)
+        && (P[p].DMB_dtime > 0)
+        && (P[p].DMB_dtime < dt)
+    ) {
+        dt = P[p].DMB_dtime;
+    }
+#endif // DM_DMB
+
 
     // add a 'stellar evolution timescale' criterion to the timestep, to prevent too-large jumps in feedback //
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || (defined(GALSF) && defined(RADTRANSFER))
