@@ -117,6 +117,24 @@ HDF5LIB   = -L/usr/lib/aarch64-linux-gnu/hdf5/openmpi -L/usr/lib/aarch64-linux-g
 MPICHLIB  =
 endif
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Torch")
+# for use iwth Apptainer container on NYU Torch cluster
+# uses OpenMPI 4.1.6
+# libraries installed to /opt/{openmpi,fftw3,hdf5}
+CC        = mpicc
+CXX       = mpic++
+FC        = mpifort
+OPTIMIZE  = -O3 -fopenmp
+GSL_INCL  = -I/usr/include
+GSL_LIBS  = -L/usr/lib/x86_64-linux-gnu -lgsl -lgslcblas -lm
+FFTW_INCL = -I/opt/fftw3/include
+FFTW_LIBS = -L/opt/fftw3/lib -lfftw3 -lfftw3_mpi
+HDF5INCL  = -I/opt/hdf5/include -DH5_USE_16_API
+HDF5LIB   = -L/opt/hdf5/lib -lhdf5 -lz
+MPICHLIB  =
+endif
+
 ifeq ($(SYSTYPE),"Greene")
 CC        = mpicc
 CXX       = mpic++
