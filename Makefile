@@ -102,14 +102,14 @@ FINCL =
 
 
 #----------------------------------------------------------------------------------------------
-ifeq ($(SYSTYPE),"Docker")
+ifeq ($(SYSTYPE),"Docker-arm")
 CC        = mpicc
 CXX       = mpic++
 FC        = mpif90 -Wno-main
 # OPTIMIZE  = -g -O0 -openmp
 OPTIMIZE  = -O3 -openmp
 GSL_INCL  = -I/usr/include
-GSL_LIBS  = -L/aarch64-linux-gnu -lgsl -lgslcblas -lm 
+GSL_LIBS  = -L/aarch64-linux-gnu -lgsl -lgslcblas -lm
 FFTW_INCL = -I/usr/include
 FFTW_LIBS = -L/aarch64-linux-gnu -lfftw3
 HDF5INCL  = -I/usr/include/hdf5/openmpi -DH5_USE_16_API
@@ -117,21 +117,18 @@ HDF5LIB   = -L/usr/lib/aarch64-linux-gnu/hdf5/openmpi -L/usr/lib/aarch64-linux-g
 MPICHLIB  =
 endif
 
-#----------------------------------------------------------------------------------------------
-ifeq ($(SYSTYPE),"Torch")
-# for use iwth Apptainer container on NYU Torch cluster
-# uses OpenMPI 4.1.6
-# libraries installed to /opt/{openmpi,fftw3,hdf5}
+ifeq ($(SYSTYPE),"Docker-x86")
 CC        = mpicc
 CXX       = mpic++
-FC        = mpifort
-OPTIMIZE  = -O3 -fopenmp
+FC        = mpif90 -Wno-main
+# OPTIMIZE  = -g -O0 -openmp
+OPTIMIZE  = -O3 -openmp
 GSL_INCL  = -I/usr/include
-GSL_LIBS  = -L/usr/lib/x86_64-linux-gnu -lgsl -lgslcblas -lm
-FFTW_INCL = -I/opt/fftw3/include
-FFTW_LIBS = -L/opt/fftw3/lib -lfftw3 -lfftw3_mpi
-HDF5INCL  = -I/opt/hdf5/include -DH5_USE_16_API
-HDF5LIB   = -L/opt/hdf5/lib -lhdf5 -lz
+GSL_LIBS  = -L/x86_64-linux-gnu -lgsl -lgslcblas -lm
+FFTW_INCL = -I/usr/include
+FFTW_LIBS = -L/x86_64-linux-gnu -lfftw3
+HDF5INCL  = -I/usr/include/hdf5/openmpi -DH5_USE_16_API
+HDF5LIB   = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lhdf5 -lmpi -lz
 MPICHLIB  =
 endif
 

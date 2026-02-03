@@ -6,7 +6,8 @@
 #
 #############
 
-SYSTYPE="Docker"
+SYSTYPE="Docker-arm"
+#SYSTYPE="Docker-x86"
 #SYSTYPE="Torch"
 #SYSTYPE="Greene"
 #SYSTYPE="Frontera"
