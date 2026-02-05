@@ -165,10 +165,10 @@ double dmb_overlap_lookup(double delta, double h_ratio) {
   return blerp(
     hr_index - i,
     dl_index - j,
-    DMB_OverlapTable[ i * DMB_OVERLAP_NUM_H_RATIO + j ],
-    DMB_OverlapTable[ (i+1) * DMB_OVERLAP_NUM_H_RATIO + j ],
-    DMB_OverlapTable[ i * DMB_OVERLAP_NUM_H_RATIO + (j+1) ],
-    DMB_OverlapTable[ (i+1) * DMB_OVERLAP_NUM_H_RATIO + (j+1) ]
+    DMB_OverlapTable[ i * DMB_OVERLAP_NUM_DELTA + j ],
+    DMB_OverlapTable[ (i+1) * DMB_OVERLAP_NUM_DELTA + j ],
+    DMB_OverlapTable[ i * DMB_OVERLAP_NUM_DELTA + (j+1) ],
+    DMB_OverlapTable[ (i+1) * DMB_OVERLAP_NUM_DELTA + (j+1) ]
   );
 }
 
@@ -228,7 +228,7 @@ void dmb_init_overlap_table(void) {
   double params[2];
 
   double t0 = my_second();
-  PRINT_STATUS("precomputing the DM-b overlap integral table...");
+  PRINT_STATUS("precomputing the DM-b overlap integral table (%d ranks)...", NTask);
 
   // set up the integration workspace
   gsl_function F;
@@ -239,11 +239,12 @@ void dmb_init_overlap_table(void) {
     DMB_OverlapTable[i] = 0.0;
   }
 
-  for (i = 0; i < DMB_OVERLAP_NUM_H_RATIO; ++i) {
+  // distribute rows across MPI ranks
+  for (i = ThisTask; i < DMB_OVERLAP_NUM_H_RATIO; i += NTask) {
     h_ratio = pow(10, -2.0 * ((double) i) / ((double) DMB_OVERLAP_NUM_H_RATIO - 1.0));
 
     for (j = 0; j < DMB_OVERLAP_NUM_DELTA; ++j) {
-      index = i * DMB_OVERLAP_NUM_H_RATIO + j;
+      index = i * DMB_OVERLAP_NUM_DELTA + j;
 
       delta = 2.0 * ((double) j) / ((double) DMB_OVERLAP_NUM_DELTA - 1.0);
       if (delta >= h_ratio + 1) {
@@ -269,10 +270,16 @@ void dmb_init_overlap_table(void) {
         break;
       }
     }
-    printf("  %d / %d\n", i, DMB_OVERLAP_NUM_H_RATIO);
   }
 
   gsl_integration_workspace_free(workspace);
+
+  // combine partial results from all ranks
+#ifndef DOUBLEPRECISION
+  MPI_Allreduce(MPI_IN_PLACE, DMB_OverlapTable, DMB_OVERLAP_TABLE_LENGTH, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+#else
+  MPI_Allreduce(MPI_IN_PLACE, DMB_OverlapTable, DMB_OVERLAP_TABLE_LENGTH, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 
   double timeall = timediff(t0, my_second());
   PRINT_STATUS("  ..finished! (%f sec)", timeall);
