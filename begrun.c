@@ -1218,6 +1218,10 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif // DM_DMB
 
+        strcpy(tag[nt], "RandomSeed");
+        addr[nt] = &All.RandomSeed;
+        id[nt++] = INT;
+
 
         strcpy(tag[nt], "MinGasHsmlFractional");
         strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
