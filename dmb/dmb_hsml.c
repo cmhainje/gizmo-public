@@ -113,9 +113,6 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
     if (P[i].Type == 0) {
         for (k = 0; k < 3; ++k) {SphP[i].DMB_Accel[k] += out->accel[k];}
         SphP[i].DMB_DtInternalEnergy += out->heatrate;
-
-        for (k = 0; k < 3; ++k) {P[i].GravAccel[k] += SphP[i].DMB_Accel[k];}
-        SphP[i].DtInternalEnergy += SphP[i].DMB_DtInternalEnergy;
     } else {
         for (k = 0; k < 3; ++k) {
             P[i].DMB_kick[k] += out->kick[k];
@@ -443,10 +440,11 @@ void dmb_calc(void)
     for(i = 0; i < NumPart; ++i) {
     // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         int k;
-        if (P[i].Type == 1) {
-            for (k = 0; k < 3; ++k) {
-                P[i].Vel[k] += P[i].DMB_kick[k];
-            }
+        if (P[i].Type == 0) {
+            for (k = 0; k < 3; ++k) { P[i].GravAccel[k] += SphP[i].DMB_Accel[k]; }
+            SphP[i].DtInternalEnergy += SphP[i].DMB_DtInternalEnergy;
+        } else if (P[i].Type == 1) {
+            for (k = 0; k < 3; ++k) { P[i].Vel[k] += P[i].DMB_kick[k]; }
         }
     }
 
