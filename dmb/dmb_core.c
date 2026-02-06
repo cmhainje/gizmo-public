@@ -83,13 +83,15 @@ double dmb_script_B(double w, double disp) {
 
 void dmb_script_AB(double w, double disp, double *scrA, double *scrB) {
   int n = All.DMB_InteractionPowerScale;
-  double sigma = dmb_cross_section(disp);
 
   if (w * w > HYPERG_ASYMP_FACTOR * disp * disp) {
+    double sigma = dmb_cross_section(w);
     *scrA = sigma * w;
     *scrB = sigma * w * w * w;
     return;
   }
+
+  double sigma = dmb_cross_section(disp);
 
   *scrA = (
     All.DMB_ScriptCoeff / 3.0 * sigma * disp
