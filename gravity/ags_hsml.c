@@ -603,6 +603,9 @@ int ags_density_isactive(int i)
 #ifdef DM_SIDM
     if((1 << P[i].Type) & (DM_SIDM)) {default_to_return = 1;}
 #endif
+#ifdef DM_DMB
+    if (P[i].Type == 1) { default_to_return = 1; }
+#endif
 #if defined(DM_FUZZY) || defined(FLAG_NOT_IN_PUBLIC_CODE)
     if(P[i].Type == 1) {default_to_return = 1;}
 #endif
