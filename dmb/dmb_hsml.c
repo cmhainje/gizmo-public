@@ -295,7 +295,7 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                         out.accel[k] += accel_coeff * (v_chi[k] - V_B[k]);
                     }
                     out.heatrate += heat_rate;
-                } else {
+                } else if (TimeBinActive[P[j].TimeBin]) {
                     for (k = 0; k < 3; ++k) { 
                         #pragma omp atomic
                         SphP[j].DMB_Accel[k] += accel_coeff * (v_chi[k] - V_B[k]);
