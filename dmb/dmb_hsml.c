@@ -255,7 +255,7 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
 
                     m_B = SphP[j].DMB_MolecularWeight;
                     M_B = P[j].Mass * UNIT_MASS_IN_CGS;
-                    for (k = 0; k < 3; ++k) V_B[k] = P[j].Vel[k] * UNIT_VEL_IN_CGS;
+                    for (k = 0; k < 3; ++k) V_B[k] = SphP[j].VelPred[k] * UNIT_VEL_IN_CGS;
                     T_B = SphP[j].DMB_Temperature;
                 }
 
@@ -433,13 +433,20 @@ void dmb_calc(void)
     /* do final operations on results: these are operations that can be done after the complete set of iterations */
     for(i = 0; i < NumPart; ++i) {
     // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
-        int k;
-        if (P[i].Type == 0) {
-            for (k = 0; k < 3; ++k) { P[i].GravAccel[k] += SphP[i].DMB_Accel[k]; }
-            SphP[i].DtInternalEnergy += SphP[i].DMB_DtInternalEnergy;
-        } else if (P[i].Type == 1) {
-            for (k = 0; k < 3; ++k) { P[i].Vel[k] += P[i].DMB_kick[k]; }
+        if (P[i].Type == 1) {
+            int k; for (k = 0; k < 3; ++k) { P[i].Vel[k] += P[i].DMB_kick[k]; }
         }
+    }
+    
+    // for(i = 0; i < NumPart; ++i) {
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
+        if (P[i].Type == 0) {
+            int k; for (k = 0; k < 3; ++k) { P[i].GravAccel[k] += SphP[i].DMB_Accel[k]; }
+            SphP[i].DtInternalEnergy += SphP[i].DMB_DtInternalEnergy;
+        }
+        // else if (P[i].Type == 1) {
+        //     for (k = 0; k < 3; ++k) { P[i].Vel[k] += P[i].DMB_kick[k]; }
+        // }
     }
 
     /* collect timing information */
