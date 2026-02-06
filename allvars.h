@@ -1947,6 +1947,7 @@ extern struct global_data_all_processes
     MyDouble DMB_InteractionCrossSection;  /*!< dark matter-baryon cross-section in [cm^2]*/
     MyDouble DMB_DarkMatterMass;           /*!< dark matter particle mass in [g] */
     MyDouble DMB_InteractionPowerScale;    /*!< for cross sections of form sigma_0 * (v/c)^n, this is `n` */
+    MyDouble DMB_ScriptCoeff;
 #endif // DM_DMB
   int RandomSeed;
 
@@ -3919,8 +3920,8 @@ extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
 
 #ifdef DM_DMB
-#define DMB_OVERLAP_NUM_H_RATIO 200
-#define DMB_OVERLAP_NUM_DELTA 200
+#define DMB_OVERLAP_NUM_H_RATIO 100
+#define DMB_OVERLAP_NUM_DELTA 100
 #define DMB_OVERLAP_TABLE_LENGTH DMB_OVERLAP_NUM_H_RATIO * DMB_OVERLAP_NUM_DELTA
 extern MyDouble DMB_OverlapTable[DMB_OVERLAP_TABLE_LENGTH];
 #endif // DM_DMB

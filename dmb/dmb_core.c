@@ -81,6 +81,34 @@ double dmb_script_B(double w, double disp) {
   return out;
 }
 
+void dmb_script_AB(double w, double disp, double *scrA, double *scrB) {
+  int n = All.DMB_InteractionPowerScale;
+  double sigma = dmb_cross_section(disp);
+
+  if (w * w > HYPERG_ASYMP_FACTOR * disp * disp) {
+    *scrA = sigma * w;
+    *scrB = sigma * w * w * w;
+    return;
+  }
+
+  *scrA = (
+    All.DMB_ScriptCoeff / 3.0 * sigma * disp
+    * gsl_sf_hyperg_1F1(-0.5 * (n + 1), 2.5, -0.5 * w * w / (disp * disp))
+  );
+  if (isnan(*scrA)) {
+    printf("ERROR: script_A is NaN; inputs were w=%f, disp=%f\n", w, disp);
+    endrun(9999);
+  }
+
+  *scrB = (
+    All.DMB_ScriptCoeff * sigma * disp * disp * disp
+    * gsl_sf_hyperg_1F1(-0.5 * (n + 3), 1.5, -0.5 * w * w / (disp * disp))
+  );
+  if (isnan(*scrB)) {
+    printf("ERROR: script_B is NaN; inputs were w=%f, disp=%f\n", w, disp);
+    endrun(9999);
+  }
+}
 
 /*! initialize some variables */
 void dmb_init() {
@@ -94,6 +122,8 @@ void dmb_init() {
     }
     P[i].DMB_dtime = 0;
   }
+
+  All.DMB_ScriptCoeff = sqrt(pow(2.0, 5.0 + All.DMB_InteractionPowerScale) / M_PI) * gsl_sf_gamma(3.0 + 0.5 * All.DMB_InteractionPowerScale);
 }
 
 

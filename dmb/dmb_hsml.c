@@ -178,16 +178,24 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
 {
     /* zero memory and import data for local target */
     int startnode, numngb_inbox, listindex = 0, j, k, n; double r2, u_i, u_j;
-    struct kernel_dmb kernel; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out;
-    memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); memset(&kernel, 0, sizeof(struct kernel_dmb));
+    // struct kernel_dmb kernel;
+    struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out;
+    memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
+    // memset(&kernel, 0, sizeof(struct kernel_dmb));
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Mass <= 0 || local.AGS_Hsml <= 0) return 0;
     /* now set particle-i centric quantities so we don't do it inside the loop */
-    kernel.h_i = local.AGS_Hsml; kernel_hinv(kernel.h_i, &kernel.hinv_i, &kernel.hinv3_i, &kernel.hinv4_i);
+    // kernel.h_i = local.AGS_Hsml; kernel_hinv(kernel.h_i, &kernel.hinv_i, &kernel.hinv3_i, &kernel.hinv4_i);
     int bitflag = dmb_BITFLAG(local.Type); // determine allowed particle types for search for adaptive gravitational softening terms
     out.dtime_dmb = local.dtime_dmb;
 
     // printf("type: %d, hsml: %e\n", local.Type, local.AGS_Hsml);
+
+    double hsml_i = local.AGS_Hsml;
+    double hinv_i = 1.0 / hsml_i;
+    double hinv3_i = CUBE(hinv_i);
+
+    double hsml_j, hinv_j, hinv3_j;
 
 
     /* Now start the actual neighbor computation for this particle */
@@ -196,17 +204,17 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
     {
         while(startnode >= 0)
         {
-            // search out to at least double the AGS_Hsml to ensure we see particles with the same AGS_Hsml as us
-            double search_len = 2.5 * local.AGS_Hsml;
+            // search out to double the AGS_Hsml to ensure we see particles with the same AGS_Hsml as us
+            double search_len = 2.001 * local.AGS_Hsml;
 
             numngb_inbox = ngb_treefind_pairs_threads_targeted(local.Pos, search_len, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, bitflag);
             if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                double Pj_Hsml = get_hsml(j);
+                hsml_j = get_hsml(j);
 
-                if((P[j].Mass <= 0) || (Pj_Hsml <= 0)) continue; /* make sure neighbor is valid */
+                if((P[j].Mass <= 0) || (hsml_j <= 0)) continue; /* make sure neighbor is valid */
 
                 /**
                  * for all valid overlapping pairs (i, j), we are guaranteed to see it when hsml_i >= hsml_j, but we may miss it when hsml_i < hsml_j.
@@ -214,29 +222,20 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                  * when hsml_i == hsml_j, avoid double counting based on IDs by only processing when Type_i > Type_j.
                  * note: these considerations about double counting don't apply if j is asleep.
                  */
-
                 if (TimeBinActive[P[j].TimeBin]) {
-                    if (local.AGS_Hsml < Pj_Hsml) continue;
-                    else if ((local.AGS_Hsml == Pj_Hsml) && (local.Type <= P[j].Type)) continue;
+                    if (hsml_i < hsml_j) continue;
+                    else if ((hsml_i == hsml_j) && (local.Type <= P[j].Type)) continue;
                 }
 
                 /* calculate position relative to target */
-                for (k = 0; k < 3; ++k) { kernel.dp[k] = local.Pos[k] - P[j].Pos[k]; }
-                NEAREST_XYZ(kernel.dp[0], kernel.dp[1], kernel.dp[2], 1); /*  now find the closest image in the given box size  */
-                r2 = kernel.dp[0]*kernel.dp[0] + kernel.dp[1]*kernel.dp[1] + kernel.dp[2]*kernel.dp[2];
-                if (r2 <= 0) continue;
-                kernel.r = sqrt(r2);
-                kernel.h_j = Pj_Hsml;
-                if (kernel.r > kernel.h_i + kernel.h_j) continue;
-                /* calculate kernel quantities needed below */
-                kernel_hinv(kernel.h_j, &kernel.hinv_j, &kernel.hinv3_j, &kernel.hinv4_j);
-                u_i = kernel.r * kernel.hinv_i; u_j = kernel.r * kernel.hinv_j;
-                if(u_i < 1) {kernel_main(u_i, kernel.hinv3_i, kernel.hinv4_i, &kernel.wk_i, &kernel.dwk_i, 0);} else {kernel.wk_i=kernel.dwk_i=0;}
-                if(u_j < 1) {kernel_main(u_j, kernel.hinv3_j, kernel.hinv4_j, &kernel.wk_j, &kernel.dwk_j, 0);} else {kernel.wk_j=kernel.dwk_j=0;}
-                for(k = 0; k < 3; ++k) {
-                    kernel.dv[k] = local.Vel[k] - P[j].Vel[k];
-                    if (All.ComovingIntegrationOn) { kernel.dv[k] += All.cf_hubble_a * kernel.dp[k] / All.cf_a2inv; }
+                double dx[3]; for (k = 0; k < 3; ++k) { dx[k] = local.Pos[k] - P[j].Pos[k]; }
+                NEAREST_XYZ(dx[0], dx[1], dx[2], 1); // handle periodic box
+                double r = sqrt(SQUARE(dx[0]) + SQUARE(dx[1]) + SQUARE(dx[2]));
+                if (r > hsml_i + hsml_j) {
+                    continue;
                 }
+                hinv_j = 1.0 / hsml_j;
+                hinv3_j = CUBE(hinv_j);
 
                 double m_chi, M_chi, v_chi[3], m_B, M_B, V_B[3], T_B;
                 m_chi = All.DMB_DarkMatterMass;
@@ -260,19 +259,15 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                     T_B = SphP[j].DMB_Temperature;
                 }
 
-                double g_ij = dmb_overlap_lookup(
-                    kernel.r / kernel.h_i,
-                    kernel.h_j / kernel.h_i
-                ) * kernel.hinv3_j / CUBE(UNIT_LENGTH_IN_CGS);
-
+                double g_ij = dmb_overlap_lookup(r / hsml_i, hsml_j / hsml_i) * hinv3_j / CUBE(UNIT_LENGTH_IN_CGS);
                 if (g_ij == 0) {
                     continue;
                 }
 
                 // handle effects on gas
                 double dv = DIFF_MAG(v_chi, V_B);
-                double scrA = dmb_script_A(dv, T_B / m_B);
-                double scrB = dmb_script_B(dv, T_B / m_B);
+                double disp_B = sqrt(T_B / m_B);
+                double scrA, scrB; dmb_script_AB(dv, disp_B, &scrA, &scrB);
                 double accel_coeff = (
                     m_chi / (m_chi + m_B)
                     * M_chi / m_chi
@@ -312,14 +307,20 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
 
                 // handle effects on DM
 
+                // don't scatter inactive DM particle neighbors
+                // (their scatterings were considered when they were last active)
+                if (local.Type == 0 && !TimeBinActive[P[j].TimeBin]) {
+                    continue;
+                }
+
                 // draw a random velocity from the local baryon MB distribution
                 double v_sample[3];
-                for (k = 0; k < 3; ++k) { v_sample[k] = V_B[k] + gsl_ran_gaussian(random_generator, sqrt(T_B / m_B)); }
+                for (k = 0; k < 3; ++k) { v_sample[k] = V_B[k] + gsl_ran_gaussian(random_generator, disp_B); }
                 dv = DIFF_MAG(v_chi, v_sample);
 
                 // calculate probability to scatter
-                // double dt = ((local.Type == 1) ? local.dtime : GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j)) * UNIT_TIME_IN_CGS;
-                double prob = (M_B / m_B) * g_ij * dmb_cross_section(dv) * dv * (local.dtime * UNIT_TIME_IN_CGS);
+                double dt = local.Type == 1 ? local.dtime : GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j); // always use DM's dt
+                double prob = (M_B / m_B) * g_ij * dmb_cross_section(dv) * dv * (dt * UNIT_TIME_IN_CGS);
                 // double prob = (M_B / m_B) * g_ij * scrA * (local.dtime * UNIT_TIME_IN_CGS);
                 if (prob > 0.2) {
                     printf("warning: large probability to scatter (IDs: %d, %d, prob: %e)\n", local.ID, P[j].ID, prob);
@@ -339,8 +340,8 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
 
 
                 // roll a random number and apply scatter
-                double Pj_dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j);
                 if (gsl_rng_uniform(random_generator) < prob) {
+                    double Pj_dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j);
 #ifdef WAKEUP
                     if (!(TimeBinActive[P[j].TimeBin])) {
                         if (WAKEUP * local.dtime < Pj_dtime) {
@@ -395,9 +396,11 @@ void dmb_calc(void)
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
     int i;
     for(i = 0; i < NumPart; ++i) {
-    // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         int k;
-        if (P[i].Type == 1) {
+        if (P[i].Type == 0) {
+            for (k = 0; k < 3; ++k) {SphP[i].DMB_Accel[k] = 0.;}
+            SphP[i].DMB_DtInternalEnergy = 0.;
+        } else if (P[i].Type == 1) {
             P[i].DMB_dtime = 10. * GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             for (k = 0; k < 3; ++k) { P[i].DMB_kick[k] = 0.; }
             P[i].DMB_probtotal = 0.;
@@ -407,17 +410,8 @@ void dmb_calc(void)
     }
 
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
-        int k;
         P[i].DMB_dtime = 10. * GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-        for (k = 0; k < 3; ++k) { P[i].DMB_kick[k] = 0.; }
-        P[i].DMB_probtotal = 0.;
-        P[i].DMB_NumScatters = 0;
-        P[i].DMB_NumNeighbors = 0;
-        
         if (P[i].Type == 0) {
-            for (k = 0; k < 3; ++k) {SphP[i].DMB_Accel[k] = 0.;}
-            SphP[i].DMB_DtInternalEnergy = 0.;
-
             double u = SphP[i].InternalEnergyPred;
             double mu, T;
             #ifdef COOLING
