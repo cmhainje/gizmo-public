@@ -2789,8 +2789,6 @@ extern ALIGN(32) struct particle_data
     double DMB_dtime;  /*!< timestep used if DM-b interaction probabilities greater than 0.2 are found */
     double DMB_kick[3];
     double DMB_probtotal;
-    long unsigned int DMB_NumScatters;
-    long unsigned int DMB_NumNeighbors;
 #endif // DM_DMB
 
 #if defined(SUBFIND)

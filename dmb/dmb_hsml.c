@@ -63,7 +63,6 @@ static inline double get_hsml(MyIDType i) {
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     in->Mass = PPP[i].Mass;
-
     in->AGS_Hsml = get_hsml(i);
 
     if (P[i].Type == 0) {
@@ -96,9 +95,6 @@ struct OUTPUT_STRUCT_NAME
     double kick[3];
     double dtime_dmb;
     double prob_total;
-    
-    int numngb;
-    int numscat;
 }
 *DATARESULT_NAME, *DATAOUT_NAME;
 
@@ -116,28 +112,15 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
     } else {
         for (k = 0; k < 3; ++k) {
             P[i].DMB_kick[k] += out->kick[k];
-            // P[i].Vel[k] += P[i].DMB_kick[k];
         }
-
-        // for (k = 0; k < 3; ++k) {
-        //     P[i].Vel[k] += out->kick[k];
-        // }
 
         P[i].DMB_probtotal += out->prob_total;
-        if (P[i].DMB_probtotal > 0.2) {
+        if (P[i].DMB_probtotal > 0.1) {
             printf("warning: DM particle %d had total scattering probability %e\n", P[i].ID, P[i].DMB_probtotal);
         }
-
-        P[i].DMB_NumNeighbors += out->numngb;
-        P[i].DMB_NumScatters += out->numscat;
-        // if (P[i].DMB_NumScatters > 0) {
-        //     printf("  %d scattered with %d / %d neighbors\n", P[i].ID, P[i].DMB_NumScatters, P[i].DMB_NumNeighbors);
-        // }
-
-
-        // for (k = 0; k < 3; ++k) {P[i].Vel[k] += out->kick[k];}
-        MIN_ADD(P[i].DMB_dtime, out->dtime_dmb, mode);
     }
+
+    MIN_ADD(P[i].DMB_dtime, out->dtime_dmb, mode);
 }
 
 
@@ -177,26 +160,19 @@ void random_unit_vector(double out[3]) {
 int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     /* zero memory and import data for local target */
-    int startnode, numngb_inbox, listindex = 0, j, k, n; double r2, u_i, u_j;
-    // struct kernel_dmb kernel;
+    int startnode, numngb_inbox, listindex = 0, j, k, n;
     struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
-    // memset(&kernel, 0, sizeof(struct kernel_dmb));
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Mass <= 0 || local.AGS_Hsml <= 0) return 0;
-    /* now set particle-i centric quantities so we don't do it inside the loop */
-    // kernel.h_i = local.AGS_Hsml; kernel_hinv(kernel.h_i, &kernel.hinv_i, &kernel.hinv3_i, &kernel.hinv4_i);
     int bitflag = dmb_BITFLAG(local.Type); // determine allowed particle types for search for adaptive gravitational softening terms
+
+    /* now set particle-i centric quantities so we don't do it inside the loop */
     out.dtime_dmb = local.dtime_dmb;
-
-    // printf("type: %d, hsml: %e\n", local.Type, local.AGS_Hsml);
-
     double hsml_i = local.AGS_Hsml;
     double hinv_i = 1.0 / hsml_i;
     double hinv3_i = CUBE(hinv_i);
-
     double hsml_j, hinv_j, hinv3_j;
-
 
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
@@ -286,24 +262,17 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                     / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS)
                 );
 
-                // if (P[j].ID == 32768) {
-                //     __builtin_trap();
-                // }
-
                 if (local.Type == 0) {
-                    for (k = 0; k < 3; ++k) { 
-                        out.accel[k] += accel_coeff * (v_chi[k] - V_B[k]);
-                    }
+                    for (k = 0; k < 3; ++k) { out.accel[k] += accel_coeff * (v_chi[k] - V_B[k]); }
                     out.heatrate += heat_rate;
                 } else if (TimeBinActive[P[j].TimeBin]) {
-                    for (k = 0; k < 3; ++k) { 
+                    for (k = 0; k < 3; ++k) {
                         #pragma omp atomic
                         SphP[j].DMB_Accel[k] += accel_coeff * (v_chi[k] - V_B[k]);
                     }
                     #pragma omp atomic
                     SphP[j].DMB_DtInternalEnergy += heat_rate;
                 }
-
 
                 // handle effects on DM
 
@@ -321,21 +290,31 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                 // calculate probability to scatter
                 double dt = local.Type == 1 ? local.dtime : GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j); // always use DM's dt
                 double prob = (M_B / m_B) * g_ij * dmb_cross_section(dv) * dv * (dt * UNIT_TIME_IN_CGS);
-                // double prob = (M_B / m_B) * g_ij * scrA * (local.dtime * UNIT_TIME_IN_CGS);
-                if (prob > 0.2) {
-                    printf("warning: large probability to scatter (IDs: %d, %d, prob: %e)\n", local.ID, P[j].ID, prob);
-                    out.dtime_dmb = DMIN(out.dtime_dmb , local.dtime * (0.2 / prob)); /* timestep condition not being met as desired, warn code to lower timestep next turn */
+
+                double mratio = m_B / (m_chi + m_B);
+                double prob_limit = DMIN(0.1, 1e-4 / (mratio * mratio));
+
+                /* timestep condition not being met as desired, warn code to lower timestep next turn */
+                if (prob > prob_limit) {
+                    double new_dt = dt * (prob_limit / prob);
+                    if (local.Type == 1) {
+                        out.dtime_dmb = DMIN(out.dtime_dmb, new_dt);
+                    } else {
+                        #pragma omp critical
+                        { if (new_dt < P[j].DMB_dtime) { P[j].DMB_dtime = new_dt; } }
+                    }
+                    // double reduction = prob_limit / prob;
+                    // out.dtime_dmb = DMIN(out.dtime_dmb, local.dtime * reduction);
+                    // double new_dtime_j = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j) * reduction;
+                    // #pragma omp critical (dmb_dtime_min)
+                    // { if (new_dtime_j < P[j].DMB_dtime) { P[j].DMB_dtime = new_dtime_j; } }
                 }
 
                 if (local.Type == 1) {
                     out.prob_total += prob;
-                    out.numngb += 1;
                 } else {
                     #pragma omp atomic
                     P[j].DMB_probtotal += prob;
-
-                    #pragma omp atomic
-                    P[j].DMB_NumNeighbors += 1;
                 }
 
 
@@ -366,15 +345,7 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                         } else {
                             #pragma omp atomic
                             P[j].DMB_kick[k] += kick[k] / UNIT_VEL_IN_CGS;
-                            // P[j].Vel[k] += kick[k] / UNIT_VEL_IN_CGS;
                         }
-                    }
-
-                    if (local.Type == 1) {
-                        out.numscat += 1;
-                    } else {
-                        #pragma omp atomic
-                        P[j].DMB_NumScatters += 1;
                     }
                 }
                 
@@ -404,8 +375,6 @@ void dmb_calc(void)
             P[i].DMB_dtime = 10. * GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             for (k = 0; k < 3; ++k) { P[i].DMB_kick[k] = 0.; }
             P[i].DMB_probtotal = 0.;
-            P[i].DMB_NumScatters = 0;
-            P[i].DMB_NumNeighbors = 0;
         }
     }
 
@@ -432,21 +401,16 @@ void dmb_calc(void)
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     /* do final operations on results: these are operations that can be done after the complete set of iterations */
     for(i = 0; i < NumPart; ++i) {
-    // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         if (P[i].Type == 1) {
             int k; for (k = 0; k < 3; ++k) { P[i].Vel[k] += P[i].DMB_kick[k]; }
         }
     }
     
-    // for(i = 0; i < NumPart; ++i) {
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         if (P[i].Type == 0) {
             int k; for (k = 0; k < 3; ++k) { P[i].GravAccel[k] += SphP[i].DMB_Accel[k]; }
             SphP[i].DtInternalEnergy += SphP[i].DMB_DtInternalEnergy;
         }
-        // else if (P[i].Type == 1) {
-        //     for (k = 0; k < 3; ++k) { P[i].Vel[k] += P[i].DMB_kick[k]; }
-        // }
     }
 
     /* collect timing information */

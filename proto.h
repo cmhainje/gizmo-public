@@ -1014,8 +1014,6 @@ double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, 
 
 #ifdef DM_DMB
 double dmb_cross_section(double v);
-double dmb_script_A(double w, double disp);
-double dmb_script_B(double w, double disp);
 void dmb_script_AB(double w, double disp, double *scrA, double *scrB);
 double dmb_overlap_lookup(double delta, double h_ratio);
 void dmb_init_overlap_table(void);

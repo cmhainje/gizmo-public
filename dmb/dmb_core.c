@@ -32,58 +32,12 @@ double dmb_cross_section(double v) {
 }
 
 /**
- * Implements the function \mathcal{A}.
+ * Implements the functions \mathcal{A} and \mathcal{B}, combining their shared work
  * Units:
  *   v:      physical, cgs [cm/s]
- *   disp:   physical, cgs [cm^2/s^2]
- *   return: physical, cgs [cm^3/s]
+ *   disp:   physical, cgs [cm/s]
  */
-double dmb_script_A(double w, double disp) {
-  if (w * w > HYPERG_ASYMP_FACTOR * disp) { return dmb_cross_section(w) * w; }
-
-  int n = All.DMB_InteractionPowerScale;
-  double sqrt_disp = sqrt(disp);
-  double out = (
-    sqrt(pow(2.0, 5.0 + n) / M_PI) / 3.0
-    * gsl_sf_gamma(3.0 + 0.5 * n)
-    * dmb_cross_section(sqrt_disp) * sqrt_disp
-    * gsl_sf_hyperg_1F1(-0.5 * (n + 1), 2.5, -0.5 * w * w / disp)
-  );
-  if (isnan(out)) {
-    printf("ERROR: script_A returning NaN; inputs were w=%f, disp=%f\n", w, disp);
-    endrun(9999);
-  }
-  return out;
-}
-
-/**
- * Implements the function \mathcal{B}.
- * Units:
- *   v:      physical, cgs [cm/s]
- *   disp:   physical, cgs [cm^2/s^2]
- *   return: physical, cgs [cm^3/s]
- */
-double dmb_script_B(double w, double disp) {
-  if (w * w > HYPERG_ASYMP_FACTOR * disp) { return dmb_cross_section(w) * w * w * w; }
-
-  int n = All.DMB_InteractionPowerScale;
-  double sqrt_disp = sqrt(disp);
-  double out = (
-    sqrt(pow(2.0, 5.0 + n) / M_PI)
-    * gsl_sf_gamma(3.0 + 0.5 * n)
-    * dmb_cross_section(sqrt_disp) * sqrt_disp * sqrt_disp * sqrt_disp
-    * gsl_sf_hyperg_1F1(-0.5 * (n + 3), 1.5, -0.5 * w * w / disp)
-  );
-  if (isnan(out)) {
-    printf("ERROR: script_B returning NaN; inputs were w=%f, disp=%f\n", w, disp);
-    endrun(9999);
-  }
-  return out;
-}
-
 void dmb_script_AB(double w, double disp, double *scrA, double *scrB) {
-  int n = All.DMB_InteractionPowerScale;
-
   if (w * w > HYPERG_ASYMP_FACTOR * disp * disp) {
     double sigma = dmb_cross_section(w);
     *scrA = sigma * w;
@@ -91,6 +45,7 @@ void dmb_script_AB(double w, double disp, double *scrA, double *scrB) {
     return;
   }
 
+  int n = All.DMB_InteractionPowerScale;
   double sigma = dmb_cross_section(disp);
 
   *scrA = (

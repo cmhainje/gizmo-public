@@ -933,9 +933,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef DM_DMB
-    /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
+    /* Reduce time-step if this particle got large interaction probabilities during the last time-step */
     if (
-        (P[p].Type == 1)
+        (P[p].Type == 0 || P[p].Type == 1)
         && (P[p].DMB_dtime > 0)
         && (P[p].DMB_dtime < dt)
     ) {
