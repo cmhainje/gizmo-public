@@ -19,7 +19,27 @@
 
 #define GSLWORKSIZE 100000
 
-double HYPERG_ASYMP_FACTOR = 100; /*!< use asymptotic limit when inputs exceed this factor */
+double HYPERG_ASYMP_FACTOR = 50; /*!< use asymptotic limit when inputs exceed this factor */
+
+double hyp1f1(double a, double b, double z) {
+  if (z >= 0 || fabs(z) < HYPERG_ASYMP_FACTOR) {
+    return gsl_sf_hyperg_1F1(a, b, z);
+  }
+
+  // use asymptotic expansion for large and negative z
+  // https://www.boost.org/doc/libs/latest/libs/math/doc/html/math_toolkit/hypergeometric/hypergeometric_1f1.html
+  double x = -z;
+  double prefactor = gsl_sf_gamma(b) / gsl_sf_gamma(b - a) * pow(x, -a);
+  double s = 0.;
+  int n; for (n = 0; n < 5; n++) {
+    s += (
+      gsl_sf_poch(a, n)
+      * gsl_sf_poch(1 + a - b, n)
+      / (gsl_sf_gamma(n + 1) * pow(x, n))
+    );
+  }
+  return prefactor * s;
+}
 
 /**
  * Computes the value of the cross section at a given relative velocity `v`.
@@ -38,19 +58,12 @@ double dmb_cross_section(double v) {
  *   disp:   physical, cgs [cm/s]
  */
 void dmb_script_AB(double w, double disp, double *scrA, double *scrB) {
-  if (w * w > HYPERG_ASYMP_FACTOR * disp * disp) {
-    double sigma = dmb_cross_section(w);
-    *scrA = sigma * w;
-    *scrB = sigma * w * w * w;
-    return;
-  }
-
   int n = All.DMB_InteractionPowerScale;
   double sigma = dmb_cross_section(disp);
 
   *scrA = (
     All.DMB_ScriptCoeff / 3.0 * sigma * disp
-    * gsl_sf_hyperg_1F1(-0.5 * (n + 1), 2.5, -0.5 * w * w / (disp * disp))
+    * hyp1f1(-0.5 * (n + 1), 2.5, -0.5 * w * w / (disp * disp))
   );
   if (isnan(*scrA)) {
     printf("ERROR: script_A is NaN; inputs were w=%f, disp=%f\n", w, disp);
@@ -59,7 +72,7 @@ void dmb_script_AB(double w, double disp, double *scrA, double *scrB) {
 
   *scrB = (
     All.DMB_ScriptCoeff * sigma * disp * disp * disp
-    * gsl_sf_hyperg_1F1(-0.5 * (n + 3), 1.5, -0.5 * w * w / (disp * disp))
+    * hyp1f1(-0.5 * (n + 3), 1.5, -0.5 * w * w / (disp * disp))
   );
   if (isnan(*scrB)) {
     printf("ERROR: script_B is NaN; inputs were w=%f, disp=%f\n", w, disp);
