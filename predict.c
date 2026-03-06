@@ -96,6 +96,9 @@ void reconstruct_timebins(void)
 
 void drift_particle(int i, integertime time1)
 {
+#ifdef FREEZE_PARTTYPE
+    if ((1 << P[i].Type) & FREEZE_PARTTYPE) return;
+#endif // FREEZE_PARTTYPE
     int j; double dt_drift; integertime time0 = P[i].Ti_current;
     if(time1 < time0)
     {
