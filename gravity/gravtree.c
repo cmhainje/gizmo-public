@@ -636,6 +636,15 @@ void gravity_tree(void)
     add_analytic_gravitational_forces(); /* add analytic terms, which -CAN- be enabled even if self-gravity is not */
 
 
+#ifdef FREEZE_PARTTYPE
+    for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
+        if ((1 << P[i].Type) & FREEZE_PARTTYPE) {
+            for (j = 0; j < 3; j++) { P[i].GravAccel[j] = 0.; }
+        }
+    }
+#endif // FREEZE_PARTTYPE
+
+
     /* Now the force computation is finished: gather timing and diagnostic information */
     t1 = WallclockTime = my_second(); timeall = timediff(t0, t1);
     timetree = timetree1 + timetree2; timewait = timewait1 + timewait2; timecomm = timecommsumm1 + timecommsumm2;
