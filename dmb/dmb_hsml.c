@@ -216,26 +216,33 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                 double m_chi, M_chi, v_chi[3], m_B, M_B, V_B[3], T_B;
                 m_chi = All.DMB_DarkMatterMass;
 
-                // load the relevant stuff, ensure it's all in CGS
+                // load the relevant stuff, ensure it's all in physical CGS
+                double vel_cgs = UNIT_VEL_IN_CGS / All.cf_atime;
                 if (local.Type == 0) {
                     m_B = local.MolecularWeight;
                     M_B = local.Mass * UNIT_MASS_IN_CGS;
-                    for (k = 0; k < 3; ++k) V_B[k] = local.Vel[k] * UNIT_VEL_IN_CGS;
+                    for (k = 0; k < 3; ++k) V_B[k] = local.Vel[k] * vel_cgs;
                     T_B = local.Temperature;
 
                     M_chi = P[j].Mass * UNIT_MASS_IN_CGS;
-                    for (k = 0; k < 3; ++k) v_chi[k] = P[j].Vel[k] * UNIT_VEL_IN_CGS;
+                    for (k = 0; k < 3; ++k) v_chi[k] = P[j].Vel[k] * vel_cgs;
                 } else {
                     M_chi = local.Mass * UNIT_MASS_IN_CGS;
-                    for (k = 0; k < 3; ++k) v_chi[k] = local.Vel[k] * UNIT_VEL_IN_CGS;
+                    for (k = 0; k < 3; ++k) v_chi[k] = local.Vel[k] * vel_cgs;
 
                     m_B = SphP[j].DMB_MolecularWeight;
                     M_B = P[j].Mass * UNIT_MASS_IN_CGS;
-                    for (k = 0; k < 3; ++k) V_B[k] = SphP[j].VelPred[k] * UNIT_VEL_IN_CGS;
+                    for (k = 0; k < 3; ++k) V_B[k] = SphP[j].VelPred[k] * vel_cgs;
                     T_B = SphP[j].DMB_Temperature;
                 }
 
-                double g_ij = dmb_overlap_lookup(r / hsml_i, hsml_j / hsml_i) * hinv3_j / CUBE(UNIT_LENGTH_IN_CGS);
+                // hubble flow correction (see ags_hsml.c:907)
+                if(All.ComovingIntegrationOn) {
+                    double hubble_corr = All.cf_hubble_a / All.cf_a2inv * vel_cgs;
+                    for (k = 0; k < 3; ++k) { v_chi[k] += hubble_corr * dx[k]; }
+                }
+
+                double g_ij = dmb_overlap_lookup(r / hsml_i, hsml_j / hsml_i) * hinv3_j * All.cf_a3inv / CUBE(UNIT_LENGTH_IN_CGS);
                 if (g_ij == 0) {
                     continue;
                 }
@@ -250,6 +257,7 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                     * g_ij
                     * scrA
                     / (UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS)
+                    / All.cf_a2inv
                 );
                 double heat_rate = (
                     m_chi / (m_chi + m_B)
@@ -341,10 +349,10 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                         );
 
                         if (local.Type == 1) {
-                            out.kick[k] += kick[k] / UNIT_VEL_IN_CGS;
+                            out.kick[k] += kick[k] * All.cf_atime / UNIT_VEL_IN_CGS;
                         } else {
                             #pragma omp atomic
-                            P[j].DMB_kick[k] += kick[k] / UNIT_VEL_IN_CGS;
+                            P[j].DMB_kick[k] += kick[k] * All.cf_atime / UNIT_VEL_IN_CGS;
                         }
                     }
                 }
