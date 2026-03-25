@@ -236,10 +236,11 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                     T_B = SphP[j].DMB_Temperature;
                 }
 
-                // hubble flow correction (see ags_hsml.c:907)
+                // hubble flow correction to v_chi - V_B (see ags_hsml.c:907)
                 if(All.ComovingIntegrationOn) {
                     double hubble_corr = All.cf_hubble_a / All.cf_a2inv * vel_cgs;
-                    for (k = 0; k < 3; ++k) { v_chi[k] += hubble_corr * dx[k]; }
+                    double hubble_sign = (local.Type == 1) ? 1.0 : -1.0;
+                    for (k = 0; k < 3; ++k) { v_chi[k] += hubble_sign * hubble_corr * dx[k]; }
                 }
 
                 double g_ij = dmb_overlap_lookup(r / hsml_i, hsml_j / hsml_i) * hinv3_j * All.cf_a3inv / CUBE(UNIT_LENGTH_IN_CGS);
