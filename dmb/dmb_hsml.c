@@ -271,6 +271,43 @@ int dmb_evaluate(int target, int mode, int *exportflag, int *exportnodecount, in
                     / (UNIT_SPECEGY_IN_CGS / UNIT_TIME_IN_CGS)
                 );
 
+                double _dt = local.Type == 0 ? local.dtime : GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j);
+                double _u  = 1.5 * T_B / m_B;
+                if (heat_rate * _dt > _u) {
+                    printf(
+                        "DMB warning: large heat rate. Inputs:\n"
+                        "  m_chi: %e,"
+                        "  m_B: %e,"
+                        "  M_chi: %e,"
+                        "  M_B: %e,"
+                        "  v_chi: [%e, %e, %e],"
+                        "  V_B: [%e, %e, %e],"
+                        "  T_B: %e,"
+                        "  dv: %e,"
+                        "  disp_B: %e,"
+                        "  scrA: %e,"
+                        "  scrB: %e,"
+                        "  g_ij: %e,"
+                        "  accel_coeff: %e,"
+                        "  heat_rate: %e"
+                        "\n",
+                        m_chi,
+                        m_B,
+                        M_chi,
+                        M_B,
+                        v_chi[0], v_chi[1], v_chi[2],
+                        V_B[0], V_B[1], V_B[2],
+                        T_B,
+                        dv,
+                        disp_B,
+                        scrA,
+                        scrB,
+                        g_ij,
+                        accel_coeff,
+                        heat_rate
+                    );
+                }
+
                 if (local.Type == 0) {
                     for (k = 0; k < 3; ++k) { out.accel[k] += accel_coeff * (v_chi[k] - V_B[k]); }
                     out.heatrate += heat_rate;
