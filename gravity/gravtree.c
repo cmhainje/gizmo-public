@@ -813,6 +813,14 @@ void set_softenings(void)
 #ifndef SELFGRAVITY_OFF
     if(All.MinHsml <= 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]) {All.MinHsml = 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0];}
 #endif
+    if(All.MinDMHsmlFractional < 0) { /* not set: mirror the gas minimum */
+        All.MinDMHsml = All.MinHsml;
+    } else {
+        All.MinDMHsml = All.MinDMHsmlFractional * All.ForceSoftening[1];
+#ifndef SELFGRAVITY_OFF
+        if(All.MinDMHsml <= 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[1]) {All.MinDMHsml = 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[1];}
+#endif
+    }
 }
 
 

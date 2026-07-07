@@ -264,6 +264,7 @@ void begrun(void)
       All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
       All.MinGasHsmlFractional = all.MinGasHsmlFractional;
+      All.MinDMHsmlFractional = all.MinDMHsmlFractional;
       All.MinGasTemp = all.MinGasTemp;
 #ifdef CHIMES
       All.ChimesThermEvolOn = all.ChimesThermEvolOn;
@@ -1226,6 +1227,11 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "MinGasHsmlFractional");
         strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
         addr[nt] = &All.MinGasHsmlFractional;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "MinDMHsmlFractional");
+        strcpy(alternate_tag[nt], "Minimum_DM_KernelSize_RelativetoSoftening");
+        addr[nt] = &All.MinDMHsmlFractional;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "MaxHsml");
@@ -2215,6 +2221,7 @@ void read_parameter_file(char *fname)
 #else
                 if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
 #endif
+                if(strcmp("MinDMHsmlFractional",tag[i])==0) {*((double *)addr[i])=-1; printf("Tag %s (%s) not set in parameter file: defaulting to use the same minimum as gas (MinGasHsmlFractional) \n",tag[i],alternate_tag[i]); continue;}
                 if(strcmp("TreeDomainUpdateFrequency",tag[i])==0) {*((double *)addr[i])=0.005; printf("Tag %s (%s) not set in parameter file: defaulting to guess that we should re-build whenever 0.5 percent of the system is active. But this should be adjusted manually for performance and accuracy in most cases (=%g) \n",tag[i],alternate_tag[i],All.TreeDomainUpdateFrequency); continue;}
                 if(strcmp("MaxHsml",tag[i])==0) {*((double *)addr[i])=MAX_REAL_NUMBER; printf("Tag %s (%s) not set in parameter file: defaulting to assume no maximum (=%g) \n",tag[i],alternate_tag[i],All.MaxHsml); continue;}
                 if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.G); continue;}

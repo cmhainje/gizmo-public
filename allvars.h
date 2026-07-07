@@ -2115,6 +2115,8 @@ extern struct global_data_all_processes
     double MinGasHsmlFractional; /*!< minimim allowed gas kernel length relative to force softening (what you actually set) */
     double MinHsml;			/*!< minimum allowed gas kernel length */
     double MaxHsml;           /*!< minimum allowed gas kernel length */
+    double MinDMHsmlFractional; /*!< minimum allowed DM kernel length relative to DM force softening (what you actually set) */
+    double MinDMHsml;           /*!< minimum allowed DM kernel length */
 
   double SofteningGas,		/*!< for type 0 */
     SofteningHalo,		/*!< for type 1 */
